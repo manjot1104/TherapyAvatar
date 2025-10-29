@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 4000;
 
 /* ---------------- Middleware ---------------- */
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:5173"],
+  origin: ["http://localhost:3000", "http://localhost:5173","https://therapy-avatar.vercel.app"],
 }));
 app.use(express.json({ limit: "2mb" }));
 

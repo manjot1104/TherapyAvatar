@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import jsPDF from "jspdf";
 import autoTable, { RowInput } from "jspdf-autotable";
+import { createClient } from "@/lib/supabase/browser-client";
 
 /* ===========================
    1) Types
@@ -33,7 +34,7 @@ export type SessionMeta = {
   sessionTitle?: string;
   clientName?: string;
   therapistName?: string;
-  sessionDateISO?: string;    // ISO string in UTC; avoids locale mismatch
+  sessionDateISO?: string;    // ISO string in UTC
 };
 
 type Aggregates = {
@@ -47,6 +48,11 @@ type Aggregates = {
   avgAttention: number | null;
 };
 
+export type SavePDFResult = {
+  session_id: string;
+  url?: string | null;
+};
+
 type SessionContextShape = {
   turns: Turn[];
   meta: SessionMeta;
@@ -55,10 +61,12 @@ type SessionContextShape = {
   clear: () => void;
   aggregates: Aggregates;
   downloadPDF: () => void;
+  savePDFToCloud: () => Promise<SavePDFResult | null>;
+  saving: boolean;
 };
 
 /* ===========================
-   2) Deterministic formatting (UTC; no locale)
+   2) Deterministic formatting (UTC)
    =========================== */
 
 function formatISODate(iso?: string) {
@@ -126,10 +134,10 @@ function aggregate(turns: Turn[]): Aggregates {
 }
 
 /* ===========================
-   4) PDF Export (uses stable ISO)
+   4) PDF builder
    =========================== */
 
-function exportPDF(meta: SessionMeta, turns: Turn[], ag: Aggregates) {
+function buildPDF(meta: SessionMeta, turns: Turn[], ag: Aggregates) {
   const {
     sessionId,
     sessionTitle = "Therapy Session Summary",
@@ -226,7 +234,13 @@ function exportPDF(meta: SessionMeta, turns: Turn[], ag: Aggregates) {
     },
   });
 
-  doc.save(`session_${(clientName || "client").replace(/\s+/g, "_")}_${sessionId.slice(0,6)}.pdf`);
+  return doc;
+}
+
+function downloadPDFFile(meta: SessionMeta, turns: Turn[], ag: Aggregates) {
+  const doc = buildPDF(meta, turns, ag);
+  const safeClient = (meta.clientName || "client").replace(/\s+/g, "_");
+  doc.save(`session_${safeClient}_${meta.sessionId.slice(0, 6)}.pdf`);
 }
 
 /* ===========================
@@ -242,6 +256,8 @@ export function SessionProvider({
   children: React.ReactNode;
   initialMeta?: Partial<SessionMeta>;
 }) {
+  const supabase = createClient();
+
   // SSR-safe defaults — NO random / date at render time
   const [meta, setMetaState] = useState<SessionMeta>({
     sessionId: initialMeta?.sessionId ?? "SSN-PENDING",
@@ -251,20 +267,42 @@ export function SessionProvider({
     sessionDateISO: initialMeta?.sessionDateISO ?? "1970-01-01T00:00:00.000Z",
   });
 
-  // On first client mount, fill actual values if missing.
+  // On first client mount, fill actual values if missing + auto-fill client name
   useEffect(() => {
-    setMetaState((prev) => {
-      const next = { ...prev };
-      if (next.sessionId === "SSN-PENDING") next.sessionId = makeClientId();
-      if (!initialMeta?.sessionDateISO || next.sessionDateISO === "1970-01-01T00:00:00.000Z") {
-        next.sessionDateISO = new Date().toISOString();
-      }
-      return next;
-    });
+    (async () => {
+      setMetaState((prev) => {
+        const next = { ...prev };
+        if (next.sessionId === "SSN-PENDING") next.sessionId = makeClientId();
+        if (!initialMeta?.sessionDateISO || next.sessionDateISO === "1970-01-01T00:00:00.000Z") {
+          next.sessionDateISO = new Date().toISOString();
+        }
+        return next;
+      });
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          let name: string | null = null;
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          name =
+            prof?.full_name ||
+            (user.user_metadata as any)?.full_name ||
+            (user.email ? user.email.split("@")[0] : null);
+
+          if (name) setMetaState((p) => ({ ...p, clientName: name }));
+        }
+      } catch {}
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [saving, setSaving] = useState(false);
 
   const addTurn = useCallback(
     (t: Omit<Turn, "id" | "timestamp"> & { id?: string; timestamp?: string }) => {
@@ -285,7 +323,32 @@ export function SessionProvider({
 
   const clear = useCallback(() => setTurns([]), []);
   const aggregates = useMemo(() => aggregate(turns), [turns]);
-  const downloadPDF = useCallback(() => exportPDF(meta, turns, aggregates), [meta, turns, aggregates]);
+  const downloadPDF = useCallback(() => downloadPDFFile(meta, turns, aggregates), [meta, turns, aggregates]);
+
+  // Save to Cloud (Storage + DB via /api/reports) — returns typed result
+  const savePDFToCloud = useCallback(async (): Promise<SavePDFResult | null> => {
+    setSaving(true);
+    try {
+      const doc = buildPDF(meta, turns, aggregates);
+      const blob = doc.output("blob"); // application/pdf
+      const fd = new FormData();
+      fd.append("file", new File([blob], `${meta.sessionId}.pdf`, { type: "application/pdf" }));
+      fd.append("session_id", meta.sessionId);
+      fd.append("title", meta.sessionTitle || "Session Summary & Report");
+
+      const res = await fetch("/api/reports", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Upload failed");
+      }
+      return {
+        session_id: data.session_id as string,
+        url: (data?.url as string | null | undefined) ?? null,
+      };
+    } finally {
+      setSaving(false);
+    }
+  }, [meta, turns, aggregates]);
 
   const value: SessionContextShape = {
     turns,
@@ -295,6 +358,8 @@ export function SessionProvider({
     clear,
     aggregates,
     downloadPDF,
+    savePDFToCloud,
+    saving,
   };
 
   return <SessionCtx.Provider value={value}>{children}</SessionCtx.Provider>;
@@ -312,11 +377,11 @@ function makeClientId() {
 }
 
 /* ===========================
-   6) UI (no locale formatting)
+   6) UI
    =========================== */
 
 export default function SessionSummary() {
-  const { meta, setMeta, aggregates, turns, downloadPDF, clear } = useSession();
+  const { meta, setMeta, aggregates, turns, downloadPDF, clear, savePDFToCloud, saving } = useSession();
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-6">
@@ -327,14 +392,28 @@ export default function SessionSummary() {
             {meta.sessionTitle} <span className="font-normal">— #{meta.sessionId}</span>
           </h1>
           <p className="text-sm text-gray-600">
-            <b>Client:</b> {meta.clientName} &nbsp;|&nbsp; <b>Therapist:</b> {meta.therapistName} &nbsp;|&nbsp;{" "}
-            <b>Date:</b> {formatISODate(meta.sessionDateISO)}
+            <b>Client:</b> {meta.clientName} &nbsp;|&nbsp; <b>Therapist:</b> {meta.therapistName} &nbsp;|&nbsp; <b>Date:</b> {formatISODate(meta.sessionDateISO)}
           </p>
         </div>
 
         <div className="flex gap-2">
           <button onClick={downloadPDF} className="px-3 py-2 rounded-lg border hover:shadow" title="Download PDF">
             Download PDF
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const res = await savePDFToCloud();
+                if (res?.url) window.open(res.url, "_blank");
+              } catch (e: any) {
+                alert(e?.message || "Failed to save report");
+              }
+            }}
+            disabled={saving}
+            className="px-3 py-2 rounded-lg border hover:shadow disabled:opacity-60"
+            title="Save to Supabase"
+          >
+            {saving ? "Saving…" : "Save to Cloud"}
           </button>
           <button onClick={clear} className="px-3 py-2 rounded-lg border hover:shadow" title="Clear">
             Clear

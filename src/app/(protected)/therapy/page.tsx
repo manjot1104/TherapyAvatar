@@ -1,7 +1,7 @@
-// src/app/page.tsx — Site-wide scenic background + Avatar-side Answer Clouds + Auto-questions
+// src/app/(protected)/therapy/page.tsx
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState, Suspense } from "react";
+import React, { useEffect, useRef, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,143 +17,40 @@ import { speakInBrowser } from "@/lib/speak";
 import EngagementGauge from "@/components/EmotionEngagementGauge";
 import useGazeWS from "@/hooks/useGazeWS";
 
-// ✅ Auto-asking predefined questions
-import PredefinedQuestionsAuto, {
-  PredefinedQuestionsAutoHandle,
-} from "@/components/PredefinedQuestionsAuto";
-
-// Session Summary (Provider + hook) + CSR-only visual widget (avoid hydration issues)
+// Session context
 import { SessionProvider, useSession } from "@/components/SessionSummary";
-const SessionSummaryCSR = dynamic(
-  () => import("@/components/SessionSummary").then((m) => m.default),
-  { ssr: false }
+
+// persistence + supabase
+import { persistTurn, persistMastery, persistAggregates } from "@/lib/session-persist";
+import { createClient } from "@/lib/supabase/browser-client";
+
+// NEW: scenarios
+import ScenarioRunner from "@/components/ScenarioRunner";
+import { SCENARIOS } from "@/data/scenarios";
+
+const SessionSummaryCSR = dynamic(() => import("@/components/SessionSummary").then((m) => m.default), { ssr: false });
+const AvatarCanvas = dynamic(
+  () => import("@/components/AvatarCanvas"),
+  { ssr: false, loading: () => <div className="h-[520px] grid place-items-center text-muted-foreground">Loading avatar…</div> }
+);
+const EmotionTracker = dynamic(
+  () => import("@/components/EmotionTracker"),
+  { ssr: false, loading: () => <div className="text-sm text-muted-foreground">Starting camera…</div> }
 );
 
-// 3D avatar (disable SSR)
-const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), {
-  ssr: false,
-  loading: () => <div className="h-[520px] grid place-items-center text-muted-foreground">Loading avatar…</div>,
-});
-
-// Emotion & gaze tracker (disable SSR)
-const EmotionTracker = dynamic(() => import("@/components/EmotionTracker"), {
-  ssr: false,
-  loading: () => <div className="text-sm text-muted-foreground">Starting camera…</div>,
-});
-
-// ---------------- Types ----------------
 type MasteryStatus = "attempted" | "success";
-type MasteryEvent = {
-  id: string;
-  ts: number;
-  skill: string;
-  status: MasteryStatus;
-  rater: "manual";
-};
+type MasteryEvent = { id: string; ts: number; skill: string; status: MasteryStatus; rater: "manual" };
 
-// ---------- Provider wrapper ----------
-export default function HomePage() {
+export default function TherapyPage() {
   return (
-    <SessionProvider
-      initialMeta={{
-        sessionId: "SSN-000123",
-        sessionDateISO: "2025-10-23T06:00:00.000Z",
-        clientName: "Ridhaan",
-        therapistName: "Dr. Priyanka Kalra",
-        sessionTitle: "Session Summary & Report",
-      }}
-    >
+    <SessionProvider initialMeta={{ sessionId: "SSN-PENDING", sessionTitle: "Session Summary & Report" }}>
       <PageBody />
     </SessionProvider>
   );
 }
 
-/* ==================== Answer Cloud Helpers ==================== */
-
-function suggestOptions(q: string): string[] {
-  const t = q.toLowerCase();
-  if (/(how are you|how do you feel|feeling|mood)/i.test(t)) {
-    return ["Good 😊", "Okay 🙂", "Bad 😕", "I need help 🆘"];
-  }
-  if (/^(can|shall|should|do|did|are|is|will|would|could|may)\b/i.test(t) || /\?\s*$/.test(t)) {
-    return ["Yes 👍", "No 👎"];
-  }
-  if (/(do you want|would you like|pick|choose|prefer)/i.test(t)) {
-    return ["This one 👉", "That one 👈"];
-  }
-  if (/(how does this make you feel|what emotion)/i.test(t)) {
-    return ["Happy 😀", "Sad 😔", "Angry 😠", "Scared 😨"];
-  }
-  return ["I know ✅", "I don't know 🤔"];
-}
-
-function splitSides(options: string[]) {
-  const left: string[] = [];
-  const right: string[] = [];
-  options.forEach((opt, i) => (i % 2 === 0 ? left.push(opt) : right.push(opt)));
-  return { left, right };
-}
-
-function CloudPill({ text, onClick }: { text: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="group relative px-4 py-2 rounded-2xl bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white border border-white/60 dark:border-slate-700 shadow-lg hover:scale-[1.03] transition-transform"
-    >
-      <span className="absolute -left-2 bottom-1 w-3 h-3 rounded-full bg-white/90 dark:bg-slate-900/90 border border-white/60 dark:border-slate-700" />
-      <span className="absolute -left-4 bottom-3 w-2.5 h-2.5 rounded-full bg-white/90 dark:bg-slate-900/90 border border-white/60 dark:border-slate-700" />
-      <span className="absolute -right-2 top-1 w-2.5 h-2.5 rounded-full bg-white/90 dark:bg-slate-900/90 border border-white/60 dark:border-slate-700" />
-      <span className="font-medium">{text}</span>
-    </button>
-  );
-}
-
-function AnswerClouds({
-  question,
-  visible,
-  onPick,
-}: {
-  question: string;
-  visible: boolean;
-  onPick: (answer: string) => void;
-}) {
-  const options = useMemo(() => suggestOptions(question), [question]);
-  const { left, right } = useMemo(() => splitSides(options), [options]);
-  if (!visible || options.length === 0) return null;
-
-  return (
-    <div className="pointer-events-none absolute inset-0 z-20" aria-hidden>
-      {/* left column */}
-      <div className="absolute inset-y-0 left-2 sm:left-4 md:left-6 flex flex-col justify-center gap-3 pointer-events-auto">
-        {left.map((opt, idx) => (
-          <div key={`L-${idx}`} className="animate-[float1_5s_ease-in-out_infinite]" style={{ animationDelay: `${idx * 0.18}s` }}>
-            <CloudPill text={opt} onClick={() => onPick(opt)} />
-          </div>
-        ))}
-      </div>
-
-      {/* right column */}
-      <div className="absolute inset-y-0 right-2 sm:right-4 md:right-6 flex flex-col justify-center items-end gap-3 pointer-events-auto">
-        {right.map((opt, idx) => (
-          <div key={`R-${idx}`} className="animate-[float2_5.4s_ease-in-out_infinite]" style={{ animationDelay: `${idx * 0.18}s` }}>
-            <CloudPill text={opt} onClick={() => onPick(opt)} />
-          </div>
-        ))}
-      </div>
-
-      <style jsx>{`
-        @keyframes float1 { 0% { transform: translateY(0px); } 50% { transform: translateY(-6px); } 100% { transform: translateY(0px); } }
-        @keyframes float2 { 0% { transform: translateY(0px); } 50% { transform: translateY(7px); } 100% { transform: translateY(0px); } }
-      `}</style>
-    </div>
-  );
-}
-
-/* ==================== Page Body ==================== */
-
 function PageBody() {
-  const session = useSession();
-
+  const { addTurn, meta, setMeta, aggregates, savePDFToCloud, saving } = useSession();
   const [processing, setProcessing] = useState(false);
   const [mode, setMode] = useState<"normal" | "calm">("normal");
   const [moduleName, setModuleName] = useState<"greeting" | "emotion" | "routine">("greeting");
@@ -163,14 +60,30 @@ function PageBody() {
   const [log, setLog] = useState<MasteryEvent[]>([]);
   const metrics = useGazeWS();
 
-  // ✅ Predefined Questions ref (to advance when answered)
-  const qaRef = useRef<PredefinedQuestionsAutoHandle>(null);
+  // scenario selection
+  const [activeScenario, setActiveScenario] = useState<keyof typeof SCENARIOS>("greeting_teacher");
 
-  // show clouds when we detect a question from assistant
-  const [showClouds, setShowClouds] = useState(false);
-  const lastQRef = useRef<string>("");
+  // OPTIONAL: if you have a selected child in state somewhere, pass its id to ScenarioRunner
+  const selectedChildId: string | null = null;
 
-  // hotkeys
+  // Create sessions row on mount
+  useEffect(() => {
+    (async () => {
+      const sb = createClient();
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return;
+      if (!/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
+        const { data, error } = await sb
+          .from("sessions")
+          .insert({ user_id: user.id, title: meta.sessionTitle || "Therapy Session" })
+          .select("id")
+          .single();
+        if (!error && data?.id) setMeta({ sessionId: data.id });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -186,30 +99,12 @@ function PageBody() {
     return () => window.removeEventListener("keydown", onKey);
   }, [moduleName, currentSkill, mode, lastAssistant]);
 
-  // Detect “question-like” assistant turns and show clouds
-  useEffect(() => {
-    const q = lastAssistant?.trim();
-    if (!q) { setShowClouds(false); return; }
-    const seemsQuestion =
-      /\?\s*$/.test(q) ||
-      /(how|what|why|who|when|where|which|would|could|should|do you|are you|can you)\b/i.test(q);
-
-    if (seemsQuestion && q !== lastQRef.current) {
-      lastQRef.current = q;
-      setShowClouds(true);
-    }
-  }, [lastAssistant]);
-
-  // handlers
   const handlePause = () => { try { window.speechSynthesis?.cancel(); } catch {} };
-
   const handleRepeat = async () => {
     if (!lastAssistant) return;
     try { window.speechSynthesis?.cancel(); await speakInBrowser(lastAssistant, { rate: 0.9 }); } catch {}
   };
-
   const handleSimplify = () => {};
-
   const handleNext = () => {
     const next = moduleName === "greeting" ? "emotion" : moduleName === "emotion" ? "routine" : "greeting";
     setModuleName(next as any);
@@ -237,42 +132,49 @@ function PageBody() {
   }
 
   const handleCalm = async () => {
-    setMode("calm");
-    setCalmLock(true);
+    setMode("calm"); setCalmLock(true);
     try { window.speechSynthesis?.cancel(); } catch {}
     try { await speakInBrowser("I am here with you. Let's breathe: in two, out two.", { rate: 0.85 }); } catch {}
     driveCalmBreathing(8000);
     setTimeout(() => setCalmLock(false), 9000);
   };
 
-  const addMastery = (skill: string, status: MasteryStatus) => {
+  const addMasteryLocal = (skill: string, status: MasteryStatus) => {
     const e: MasteryEvent = {
       id: typeof crypto !== "undefined" && "randomUUID" in crypto ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2),
-      ts: Date.now(),
-      skill,
-      status,
-      rater: "manual",
+      ts: Date.now(), skill, status, rater: "manual",
     };
     setLog((prev) => [e, ...prev].slice(0, 30));
   };
 
-  // When a cloud is chosen -> log + speak + advance next Q
-  const handlePick = async (answer: string) => {
-    setShowClouds(false);
-    session.addTurn({ speaker: "child", text: answer, attention: metrics?.attention ?? undefined });
-    try { await speakInBrowser(answer, { rate: 0.98 }); } catch {}
-    qaRef.current?.childAnswered(); // ✅ move to next predefined question
-  };
+  const handleEndSession = async () => {
+    try {
+      if (!/^[0-9a-f-]{36}$/i.test(meta.sessionId)) { alert("Session not initialized yet."); return; }
+      const res: any = await savePDFToCloud();
+      if (!res?.session_id) throw new Error("Upload failed");
 
-  // (Optional) separate handler for TherapistPanel.onAsk to avoid inline any
-  const handleAsk = async (q: string): Promise<void> => {
-    session.addTurn({ speaker: "therapist", text: q });
-    try { await speakInBrowser(q, { rate: 0.95 }); } catch {}
+      await persistAggregates(res.session_id, {
+        child_id: selectedChildId,
+        total_turns: aggregates.totalTurns,
+        duration_min: aggregates.durationMin,
+        words_total: aggregates.wordsTotal,
+        avg_attention: aggregates.avgAttention,
+        turns_child: aggregates.turnsBySpeaker.child ?? 0,
+        turns_therapist: aggregates.turnsBySpeaker.therapist ?? 0,
+        turns_assistant: aggregates.turnsBySpeaker.assistant ?? 0,
+        turns_parent: aggregates.turnsBySpeaker.parent ?? 0,
+      });
+
+      if (res.url) window.open(res.url, "_blank");
+      alert("Session saved ✅");
+    } catch (e: any) {
+      alert(e?.message || "Failed to save session");
+    }
   };
 
   return (
     <main className="min-h-screen relative overflow-hidden">
-      {/* 🔵 SITE-WIDE BACKGROUND (fixed behind everything) */}
+      {/* BG */}
       <div className="fixed inset-0 -z-10">
         <Image src="/site-bg.png" alt="site-bg" fill priority className="object-cover" />
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40" />
@@ -284,7 +186,7 @@ function PageBody() {
           <span className="inline-grid place-items-center h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-sky-400 text-white shadow">
             <Sparkles className="h-4 w-4" />
           </span>
-          <div>
+        <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">Therapy Avatar</h1>
             <p className="text-xs md:text-sm text-muted-foreground">
               Mode: <b className="text-foreground">{mode}</b> • Module: <b className="text-foreground">{moduleName}</b> • Skill:{" "}
@@ -293,55 +195,46 @@ function PageBody() {
           </div>
         </div>
 
-        {/* Shortcuts helper */}
-        <TooltipProvider>
-          <div className="hidden md:flex gap-2 text-xs text-muted-foreground">
-            {["P: Pause", "R: Repeat", "S: Simplify", "N: Next", "C: Calm"].map((t) => (
-              <Tooltip key={t}>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline">{t.split(":")[0]}</Badge>
-                </TooltipTrigger>
-                <TooltipContent>{t.split(":")[1].trim()}</TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </TooltipProvider>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <div className="hidden md:flex gap-2 text-xs text-muted-foreground">
+              {["P: Pause", "R: Repeat", "S: Simplify", "N: Next", "C: Calm"].map((t) => (
+                <Tooltip key={t}>
+                  <TooltipTrigger asChild><Badge variant="outline">{t.split(":")[0]}</Badge></TooltipTrigger>
+                  <TooltipContent>{t.split(":")[1].trim()}</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </TooltipProvider>
+
+          <Button onClick={handleEndSession} disabled={saving || !/^[0-9a-f-]{36}$/i.test(meta.sessionId)} variant="outline">
+            {saving ? "Saving…" : "End Session & Save"}
+          </Button>
+        </div>
       </header>
 
-      {/* Main Layout */}
+      {/* Layout */}
       <div className="relative z-10 mx-auto max-w-7xl p-4 md:p-6 grid gap-6 lg:grid-cols-[1fr_400px]">
-        {/* 👦 Child Area */}
+        {/* Child Area */}
         <section className="space-y-6">
-          {/* Avatar card with scenic BG + AnswerClouds overlay */}
           <Card className="bg-card/90 border-border shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between w-full">
-                <span className="text-primary flex items-center gap-2">
-                  <Sun className="w-4 h-4" /> Avatar
-                </span>
+                <span className="text-primary flex items-center gap-2"><Sun className="w-4 h-4" /> Avatar</span>
                 <Badge className="bg-amber-400 text-slate-900 dark:text-black">Kid Mode</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="relative rounded-2xl overflow-hidden ring-1 ring-border">
-                {/* avatar-area background */}
+                {/* scenic bg */}
                 <Image src="/bg.png" alt="" fill priority className="object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40" />
 
-                {/* ✅ Auto-questions */}
-                <PredefinedQuestionsAuto
-                  ref={qaRef}
+                {/* 🔄 SCENARIO RUNNER (avatar speaks, clouds show options) */}
+                <ScenarioRunner
+                  scenarioKey={activeScenario}
                   setLastAssistant={setLastAssistant}
-                  startOnMount={true}
-                  rate={0.95}
-                  lang="en-IN"
-                />
-
-                {/* Answer clouds overlay (shows when assistant asks a question) */}
-                <AnswerClouds
-                  question={lastAssistant}
-                  visible={!!lastAssistant && !processing && !calmLock && showClouds}
-                  onPick={handlePick}
+                  selectedChildId={selectedChildId || undefined}
                 />
 
                 {/* Avatar canvas */}
@@ -351,12 +244,10 @@ function PageBody() {
                   </Suspense>
                 </div>
 
-                {/* Emotion camera small tile */}
+                {/* Emotion camera */}
                 <div className="absolute top-4 left-4 drop-shadow-md z-20">
                   <div className="scale-75 origin-top-left">
-                    <Suspense fallback={null}>
-                      <EmotionTracker />
-                    </Suspense>
+                    <Suspense fallback={null}><EmotionTracker /></Suspense>
                   </div>
                 </div>
 
@@ -366,17 +257,17 @@ function PageBody() {
                     <div className="pointer-events-auto">
                       <AudioRecorder
                         onUserTranscript={(t) => {
-                          session.addTurn({
-                            speaker: "child",
-                            text: t,
-                            attention: metrics?.attention ?? undefined,
-                          });
-                          setShowClouds(false);
-                          qaRef.current?.childAnswered(); // ✅ voice answer advances
+                          addTurn({ speaker: "child", text: t, attention: metrics?.attention ?? undefined });
+                          if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
+                            persistTurn(meta.sessionId, { speaker: "child", text: t, attention: metrics?.attention ?? undefined }).catch(()=>{});
+                          }
                         }}
                         onAssistant={(reply) => {
                           setLastAssistant(reply);
-                          session.addTurn({ speaker: "assistant", text: reply });
+                          addTurn({ speaker: "assistant", text: reply });
+                          if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
+                            persistTurn(meta.sessionId, { speaker: "assistant", text: reply }).catch(()=>{});
+                          }
                         }}
                         onProcessingChange={(v) => setProcessing(v)}
                       />
@@ -394,6 +285,29 @@ function PageBody() {
             </CardContent>
           </Card>
 
+          {/* Scenario selector (only switches active scenario; runner is above) */}
+          <Card className="bg-card/90 border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-primary">🎯 Training Scenarios</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={activeScenario} onValueChange={(v) => setActiveScenario(v as keyof typeof SCENARIOS)}>
+                <TabsList className="flex flex-wrap gap-1">
+                  <TabsTrigger value="greeting_teacher">Greeting</TabsTrigger>
+                  <TabsTrigger value="ask_help">Ask Help</TabsTrigger>
+                  <TabsTrigger value="wait_turn">Wait Turn</TabsTrigger>
+                  <TabsTrigger value="share_play">Share Play</TabsTrigger>
+                  <TabsTrigger value="calm_down">Calm Down</TabsTrigger>
+                </TabsList>
+                <TabsContent value={activeScenario}>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Active: {SCENARIOS[activeScenario].title}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
           {/* Mastery + Achievements */}
           <Tabs defaultValue="log" className="w-full">
             <TabsList className="bg-card/80 backdrop-blur border border-border">
@@ -402,9 +316,7 @@ function PageBody() {
             <TabsContent value="log">
               <Card className="bg-card/90 border-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-primary flex items-center gap-2">
-                    <Trophy className="w-4 h-4" /> 🏅 Recent Mastery
-                  </CardTitle>
+                  <CardTitle className="text-primary flex items-center gap-2"><Trophy className="w-4 h-4" /> 🏅 Recent Mastery</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {log.length === 0 ? (
@@ -420,10 +332,27 @@ function PageBody() {
                     </ul>
                   )}
                   <div className="mt-3 flex gap-2 text-xs text-muted-foreground">
-                    <Button variant="outline" onClick={() => addMastery(currentSkill, "attempted")}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        addMasteryLocal(currentSkill, "attempted");
+                        if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
+                          persistMastery(meta.sessionId, currentSkill, "attempted").catch(()=>{});
+                        }
+                      }}
+                    >
                       Mark Attempt
                     </Button>
-                    <Button onClick={() => addMastery(currentSkill, "success")}>Mark Success</Button>
+                    <Button
+                      onClick={() => {
+                        addMasteryLocal(currentSkill, "success");
+                        if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
+                          persistMastery(meta.sessionId, currentSkill, "success").catch(()=>{});
+                        }
+                      }}
+                    >
+                      Mark Success
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -431,7 +360,7 @@ function PageBody() {
           </Tabs>
         </section>
 
-        {/* 🧑‍⚕️ Therapist Column */}
+        {/* Therapist Column */}
         <aside className="space-y-6">
           <Card className="bg-card/90 border-border">
             <CardContent className="p-3">
@@ -443,18 +372,28 @@ function PageBody() {
                 onSimplify={handleSimplify}
                 onNext={handleNext}
                 onCalm={handleCalm}
-                onMarkAttempt={(skill) => addMastery(skill, "attempted")}
-                onMarkSuccess={(skill) => addMastery(skill, "success")}
-                onAsk={handleAsk}
+                onMarkAttempt={(skill) => {
+                  addMasteryLocal(skill, "attempted");
+                  if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) persistMastery(meta.sessionId, skill, "attempted").catch(()=>{});
+                }}
+                onMarkSuccess={(skill) => {
+                  addMasteryLocal(skill, "success");
+                  if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) persistMastery(meta.sessionId, skill, "success").catch(()=>{});
+                }}
+                onAsk={async (q) => {
+                  addTurn({ speaker: "therapist", text: q });
+                  if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
+                    persistTurn(meta.sessionId, { speaker: "therapist", text: q }).catch(()=>{});
+                  }
+                  try { await speakInBrowser(q, { rate: 0.95 }); } catch {}
+                }}
               />
             </CardContent>
           </Card>
 
           <Card className="bg-card/90 border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-primary flex items-center gap-2">
-                <Activity className="w-4 h-4" /> 💡 Engagement Meter
-              </CardTitle>
+              <CardTitle className="text-primary flex items-center gap-2"><Activity className="w-4 h-4" /> 💡 Engagement Meter</CardTitle>
             </CardHeader>
             <CardContent>
               <EngagementGauge attentionScore={metrics?.engagementScore ?? metrics?.attention ?? 0} />
@@ -465,13 +404,11 @@ function PageBody() {
           </Card>
         </aside>
 
-        {/* 📝 Centered Session Summary (spans both columns, centered) */}
+        {/* Summary */}
         <div className="lg:col-span-2 justify-self-center w-full max-w-4xl">
           <Card className="bg-card/90 border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-primary flex items-center gap-2">
-                <Stars className="w-4 h-4" /> 📝 Session Summary & Report
-              </CardTitle>
+              <CardTitle className="text-primary flex items-center gap-2"><Stars className="w-4 h-4" /> 📝 Session Summary & Report</CardTitle>
             </CardHeader>
             <CardContent>
               <SessionSummaryCSR />
@@ -480,7 +417,6 @@ function PageBody() {
         </div>
       </div>
 
-      {/* High-contrast footer text */}
       <footer className="relative z-10 px-6 pb-8 text-center text-xs text-slate-800 dark:text-white">
         Designed for calm, clarity, and play ✨
       </footer>

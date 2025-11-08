@@ -1,10 +1,13 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
-/* ❌ ye line hata do: @import "tw-animate-css";  */
+/* ❌ remove if present: @import "tw-animate-css"; */
 
 @custom-variant dark (&:is(.dark *));
 
+/* ===========================
+   THEME TOKENS
+   =========================== */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -81,40 +84,34 @@
 }
 
 .dark {
-  /* Core surfaces */
-  --background: oklch(0 0 0);            /* #000 */
-  --foreground: oklch(0.98 0 0);         /* near-white */
-  --card: oklch(0.1 0 0);                /* very dark slate */
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.1 0 0);
   --card-foreground: oklch(0.98 0 0);
   --popover: oklch(0.08 0 0);
   --popover-foreground: oklch(0.98 0 0);
 
-  /* Brand / accents (keep vivid so they pop on black) */
-  --primary: oklch(0.7 0.12 265);        /* bright indigo */
-  --primary-foreground: oklch(0.1 0 0);  /* dark for filled buttons */
-  --secondary: oklch(0.22 0.02 256);     /* slate */
+  --primary: oklch(0.7 0.12 265);
+  --primary-foreground: oklch(0.1 0 0);
+  --secondary: oklch(0.22 0.02 256);
   --secondary-foreground: oklch(0.96 0 0);
   --accent: oklch(0.25 0.03 256);
   --accent-foreground: oklch(0.96 0 0);
 
-  /* Muted text / UI */
   --muted: oklch(0.18 0.01 260);
   --muted-foreground: oklch(0.75 0.02 260);
 
-  /* Status / borders / inputs */
   --destructive: oklch(0.65 0.19 22);
-  --border: oklch(0.22 0 0);             /* subtle but visible on black */
+  --border: oklch(0.22 0 0);
   --input: oklch(0.22 0 0);
   --ring: oklch(0.78 0.02 261);
 
-  /* Charts (optional) */
   --chart-1: oklch(0.78 0.19 264);
   --chart-2: oklch(0.7 0.17 162);
   --chart-3: oklch(0.76 0.19 70);
   --chart-4: oklch(0.62 0.26 304);
   --chart-5: oklch(0.64 0.24 16);
 
-  /* Sidebar */
   --sidebar: var(--card);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -125,8 +122,221 @@
   --sidebar-ring: var(--ring);
 }
 
-
+/* ===========================
+   BASE + ACCESSIBILITY
+   =========================== */
 @layer base {
   * { @apply border-border outline-ring/50; }
   body { @apply bg-background text-foreground; }
+
+  html {
+    font-size: clamp(14px, 1.6vw + 8px, 16px);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    line-height: 1.55;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* iOS safe areas */
+    padding-left: max(env(safe-area-inset-left), 0px);
+    padding-right: max(env(safe-area-inset-right), 0px);
+    padding-top: max(env(safe-area-inset-top), 0px);
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+
+  h1 { font-size: clamp(1.5rem, 2.6vw + 1rem, 2.25rem); line-height: 1.15; }
+  h2 { font-size: clamp(1.375rem, 2.2vw + 0.9rem, 1.875rem); line-height: 1.2; }
+  h3 { font-size: clamp(1.25rem, 1.8vw + 0.85rem, 1.5rem); line-height: 1.25; }
+  p, li { font-size: clamp(0.95rem, 0.5vw + 0.85rem, 1rem); }
+
+  button, [role="button"], .btn, a[href] { min-height: 40px; min-width: 40px; }
+
+  img, svg, video, canvas { max-width: 100%; height: auto; display: block; }
+
+  :where(p, h1, h2, h3, h4, h5, h6) { overflow-wrap: anywhere; }
+
+  *:focus-visible { outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
+
+/* ===========================
+   UTILITIES (NO VARIANTS IN @apply)
+   =========================== */
+@layer utilities {
+  /* Page/container shell */
+  .container { @apply mx-auto w-full px-4; max-width: 100%; }
+
+  /* Fluid spacing tokens */
+  :root {
+    --space-1: clamp(0.375rem, 0.6vw, 0.5rem);
+    --space-2: clamp(0.5rem, 1vw, 0.75rem);
+    --space-3: clamp(0.75rem, 1.4vw, 1rem);
+    --space-4: clamp(1rem, 2vw, 1.25rem);
+    --space-6: clamp(1.25rem, 3vw, 1.5rem);
+    --space-8: clamp(1.5rem, 4vw, 2rem);
+  }
+
+  .pad   { padding: var(--space-3); }
+  .pad-x { padding-left: var(--space-3); padding-right: var(--space-3); }
+  .pad-y { padding-top: var(--space-3);  padding-bottom: var(--space-3); }
+  .gap-fluid { gap: var(--space-3); }
+  .card { @apply bg-card text-card-foreground rounded-xl border; padding: var(--space-4); }
+  .clamp-content { max-width: 100%; overflow-x: hidden; }
+  .auto-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--space-3); }
+  .aspect-square { aspect-ratio: 1 / 1; }
+  .aspect-video  { aspect-ratio: 16 / 9; }
+
+  /* ===== Viewport helpers (iOS/Android) ===== */
+  .h-screen-fix { min-height: 100vh; min-height: 100svh; min-height: 100dvh; }
+  .w-screen-fix { width: 100vw; max-width: 100%; }
+  .ios-scroll { -webkit-overflow-scrolling: touch; }
+  .bg-fixed-ios { background-attachment: scroll; }
+
+  /* ===== Clouds (behind content) ===== */
+  .clouds { position: relative; overflow: hidden; isolation: isolate; }
+  .cloud {
+    position: absolute; z-index: 0; pointer-events: none; opacity: 0.45;
+    filter: drop-shadow(0 1px 4px oklch(0 0 0 / .12));
+    width: clamp(160px, 20vw, 320px); height: auto; will-change: transform;
+  }
+  .cloud--tl { top: -5%; left: -6%; }
+  .cloud--tr { top: -6%; right: -6%; }
+  .cloud--bl { bottom: -6%; left: -8%; }
+  .cloud--br { bottom: -8%; right: -6%; }
+  .content-layer { position: relative; z-index: 10; }
+
+  /* ===== Avatar stage + camera overlay ===== */
+  .avatar-stage {
+    position: relative; border-radius: 1rem;
+    background: var(--card); color: var(--card-foreground);
+    border: 1px solid var(--border); overflow: hidden;
+    max-height: min(52svh, 520px);
+  }
+  .avatar-canvas { width: 100%; height: clamp(260px, 46svh, 520px); object-fit: cover; display: block; }
+
+  /* Camera overlay positions */
+  .avatar-overlay { position: absolute; z-index: 20; display: grid; gap: .375rem; }
+  /* Smart: phones → top-right, md+ → top-left */
+  .overlay-smart { top: .5rem; right: .5rem; left: auto; }
+  @media (min-width: 768px) { .overlay-smart { top: 1rem; left: 1rem; right: auto; } }
+  /* Optional explicit positions */
+  .overlay-tl { top: .5rem; left: .5rem; right: auto; bottom: auto; }
+  .overlay-tr { top: .5rem; right: .5rem; left: auto; bottom: auto; }
+  .overlay-bl { bottom: .5rem; left: .5rem; right: auto; top: auto; }
+  .overlay-br { bottom: .5rem; right: .5rem; left: auto; top: auto; }
+  @media (max-width: 430px) { .overlay-smart { top: .25rem; right: .25rem; } }
+
+  /* Constrained camera wrapper */
+  .cam-box {
+    width: min(34vw, 128px); /* compact on phones */
+    aspect-ratio: 4 / 3;
+    border-radius: .75rem;
+    border: 2px solid oklch(0 0 0 / .06);
+    box-shadow: 0 6px 18px oklch(0 0 0 / .15);
+    overflow: hidden;
+    background: #000;
+  }
+  .cam-box > video,
+  .cam-box > canvas,
+  .cam-box > img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block; }
+
+  /* Therapist grid (kept from earlier) */
+  .therapist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); align-items: stretch; }
+  .therapist-card { @apply bg-card text-card-foreground border rounded-xl; display: flex; flex-direction: column; overflow: hidden; }
+  .therapist-media { aspect-ratio: 4 / 3; width: 100%; object-fit: cover; }
+  .therapist-body { padding: var(--space-3); display: grid; gap: var(--space-2); }
+  .therapist-title { font-weight: 600; line-height: 1.2; font-size: clamp(1rem, 0.7vw + 0.95rem, 1.125rem); }
+  .therapist-subtle { opacity: 0.75; font-size: clamp(0.85rem, 0.4vw + 0.8rem, 0.95rem); }
+
+  .therapist-actions { display: flex; gap: var(--space-2); padding: var(--space-3); padding-top: 0; }
+
+  /* ======= NEW: Clouds bottom sheet helpers (mobile) ======= */
+  /* Limit height + smooth scroll */
+  .cloud-sheet {
+    max-height: 38svh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* 1 column by default; switch to 2 columns at ≥360px */
+  .xsm-two-col { grid-template-columns: 1fr; }
+  @media (min-width: 360px) {
+    .xsm-two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* Floating animations (replaces styled-jsx) */
+  .sr-float1 { animation: sr_float1 5s ease-in-out infinite; }
+  .sr-float2 { animation: sr_float2 5.4s ease-in-out infinite; }
+}
+
+/* Cloud motion only if user allows */
+@keyframes cloudFloat { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-6px,0); } }
+
+/* Floating keyframes for pills */
+@keyframes sr_float1 {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0px); }
+}
+@keyframes sr_float2 {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(7px); }
+  100% { transform: translateY(0px); }
+}
+
+/* ===========================
+   RESPONSIVE MEDIA QUERIES
+   =========================== */
+
+/* container paddings */
+@media (min-width: 640px) { .container { padding-left: 1.5rem; padding-right: 1.5rem; } }
+@media (min-width: 1024px){ .container { padding-left: 2rem;   padding-right: 2rem;   } }
+
+/* container max-widths */
+@media (min-width: 640px)  { .container { max-width: 640px; } }
+@media (min-width: 768px)  { .container { max-width: 768px; } }
+@media (min-width: 1024px) { .container { max-width: 1024px; } }
+@media (min-width: 1280px) { .container { max-width: 1280px; } }
+@media (min-width: 1536px) { .container { max-width: 1400px; } }
+
+/* Therapist grid tighter on small phones */
+@media (max-width: 480px) {
+  .therapist-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-2); }
+  body { padding-left: 0; padding-right: 0; }
+}
+
+/* Clouds smaller on very narrow phones */
+@media (max-width: 420px) {
+  .cloud { width: clamp(100px, 26vw, 180px); opacity: 0.38; }
+  .cloud--tl { top: -3%; left: -3%; }
+  .cloud--tr { top: -4%; right: -3%; }
+  .cloud--bl { bottom: -4%; left: -4%; }
+  .cloud--br { bottom: -5%; right: -3%; }
+}
+
+/* Larger camera on tablets/desktop */
+@media (min-width: 768px) {
+  .avatar-stage { max-height: 560px; }
+  .avatar-canvas { height: 520px; }
+  .cam-box { width: min(28vw, 200px); }
+}
+
+/* Animate clouds only if user allows motion */
+@media (prefers-reduced-motion: no-preference) {
+  .cloud { animation: cloudFloat 24s ease-in-out infinite; }
+  .cloud--slow { animation-duration: 36s; }
+  .cloud--fast { animation-duration: 16s; }
+}
+
+/* Radius tweak by screen size */
+@media (min-width: 768px)  { :root { --radius: 0.625rem; } }
+@media (min-width: 1280px) { :root { --radius: 0.75rem; } }

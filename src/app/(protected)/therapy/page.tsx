@@ -1,7 +1,7 @@
 // src/app/(protected)/therapy/page.tsx
 "use client";
 
-import React, { useEffect, useRef, useState, Suspense } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,13 +60,9 @@ function PageBody() {
   const [log, setLog] = useState<MasteryEvent[]>([]);
   const metrics = useGazeWS();
 
-  // scenario selection
   const [activeScenario, setActiveScenario] = useState<keyof typeof SCENARIOS>("greeting_teacher");
-
-  // OPTIONAL: if you have a selected child in state somewhere, pass its id to ScenarioRunner
   const selectedChildId: string | null = null;
 
-  // Create sessions row on mount
   useEffect(() => {
     (async () => {
       const sb = createClient();
@@ -173,20 +169,20 @@ function PageBody() {
   };
 
   return (
-    <main className="min-h-screen relative overflow-hidden">
+    <main className="h-screen-fix relative overflow-hidden">
       {/* BG */}
-      <div className="fixed inset-0 -z-10">
+      <div className="fixed inset-0 -z-10 bg-fixed-ios">
         <Image src="/site-bg.png" alt="site-bg" fill priority className="object-cover" />
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40" />
       </div>
 
       {/* Header */}
-      <header className="relative z-10 px-6 py-4 border-b border-border bg-card/80 backdrop-blur-sm flex flex-wrap items-center justify-between gap-3 shadow-sm">
+      <header className="relative z-10 px-4 md:px-6 py-4 border-b border-border bg-card/80 backdrop-blur-sm flex flex-wrap items-center justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="inline-grid place-items-center h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-sky-400 text-white shadow">
             <Sparkles className="h-4 w-4" />
           </span>
-        <div>
+          <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">Therapy Avatar</h1>
             <p className="text-xs md:text-sm text-muted-foreground">
               Mode: <b className="text-foreground">{mode}</b> • Module: <b className="text-foreground">{moduleName}</b> • Skill:{" "}
@@ -214,7 +210,7 @@ function PageBody() {
       </header>
 
       {/* Layout */}
-      <div className="relative z-10 mx-auto max-w-7xl p-4 md:p-6 grid gap-6 lg:grid-cols-[1fr_400px]">
+      <div className="relative z-10 mx-auto container pad-y gap-6 grid lg:grid-cols-[1fr_400px]">
         {/* Child Area */}
         <section className="space-y-6">
           <Card className="bg-card/90 border-border shadow-sm">
@@ -225,12 +221,12 @@ function PageBody() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="relative rounded-2xl overflow-hidden ring-1 ring-border">
+              <div className="avatar-stage">
                 {/* scenic bg */}
                 <Image src="/bg.png" alt="" fill priority className="object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40" />
 
-                {/* 🔄 SCENARIO RUNNER (avatar speaks, clouds show options) */}
+                {/* 🔄 SCENARIO RUNNER */}
                 <ScenarioRunner
                   scenarioKey={activeScenario}
                   setLastAssistant={setLastAssistant}
@@ -238,15 +234,15 @@ function PageBody() {
                 />
 
                 {/* Avatar canvas */}
-                <div className="relative z-10" style={{ width: "100%", height: 660 }}>
+                <div className="avatar-canvas relative z-10">
                   <Suspense fallback={<div className="h-full grid place-items-center text-muted-foreground">Loading avatar…</div>}>
                     <AvatarCanvas modelUrl="https://models.readyplayer.me/68f9edd6a9529d2d623bdb8b.glb?morphTargets=ARKit" />
                   </Suspense>
                 </div>
 
-                {/* Emotion camera */}
-                <div className="absolute top-4 left-4 drop-shadow-md z-20">
-                  <div className="scale-75 origin-top-left">
+                {/* Emotion camera — phone: top-right, md+: top-left */}
+                <div className="avatar-overlay overlay-smart drop-shadow-md">
+                  <div className="cam-box">
                     <Suspense fallback={null}><EmotionTracker /></Suspense>
                   </div>
                 </div>
@@ -285,7 +281,7 @@ function PageBody() {
             </CardContent>
           </Card>
 
-          {/* Scenario selector (only switches active scenario; runner is above) */}
+          {/* Scenario selector */}
           <Card className="bg-card/90 border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-primary">🎯 Training Scenarios</CardTitle>
@@ -322,7 +318,7 @@ function PageBody() {
                   {log.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No entries yet.</p>
                   ) : (
-                    <ul className="space-y-1 max-h-44 overflow-auto pr-1">
+                    <ul className="space-y-1 max-h-44 overflow-auto pr-1 ios-scroll">
                       {log.map((e) => (
                         <li key={e.id} className="text-sm text-foreground flex items-center justify-between">
                           <span>{new Date(e.ts).toLocaleTimeString()} • {e.skill}</span>
@@ -417,7 +413,7 @@ function PageBody() {
         </div>
       </div>
 
-      <footer className="relative z-10 px-6 pb-8 text-center text-xs text-slate-800 dark:text-white">
+      <footer className="relative z-10 px-4 md:px-6 pb-8 text-center text-xs text-slate-800 dark:text-white">
         Designed for calm, clarity, and play ✨
       </footer>
     </main>

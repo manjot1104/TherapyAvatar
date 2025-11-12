@@ -34,7 +34,8 @@ export type SessionMeta = {
   sessionTitle?: string;
   clientName?: string;
   therapistName?: string;
-  sessionDateISO?: string;    // ISO string in UTC
+  sessionDateISO?: string; 
+  childId?: string;   
 };
 
 type Aggregates = {
@@ -131,6 +132,23 @@ function aggregate(turns: Turn[]): Aggregates {
   const avgAttention = att.length ? att.reduce((a, b) => a + b, 0) / att.length : null;
 
   return { totalTurns, durationMin, wordsTotal, wordsBySpeaker, turnsBySpeaker, emotionCounts, emotionPct, avgAttention };
+}
+
+
+function toTurnDTOs(turns: Turn[]): Array<{
+  idx: number; ts: string; speaker: string; text: string; emotion?: string; attention?: number;
+}> {
+  return turns
+    .slice()
+    .sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp))
+    .map((t, i) => ({
+      idx: i,
+      ts: t.timestamp,
+      speaker: t.speaker,
+      text: t.text,
+      emotion: t.emotion,
+      attention: typeof t.attention === "number" ? t.attention : undefined,
+    }));
 }
 
 /* ===========================

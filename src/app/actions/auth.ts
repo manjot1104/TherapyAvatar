@@ -1,11 +1,11 @@
-// app/actions/auth.ts
+// src/app/actions/auth.ts
 "use server";
 
-import { serverActionClient } from "@/lib/supabase/server-action-client";
+import { serverClient } from "@/lib/supabase/server-client";
 import { redirect } from "next/navigation";
 
 export async function signOutAction() {
-  const supabase = await serverActionClient();
+  const supabase = await serverClient();
   await supabase.auth.signOut();
-  redirect("/login"); // ✅ sign out → force go to /login
+  redirect("/login");
 }

@@ -18,9 +18,9 @@ export default function AuthHeader() {
   return (
     <header className="w-full border-b">
       <div className="max-w-5xl mx-auto flex items-center justify-between p-3">
-        <Link href="/" className="font-semibold">YourApp</Link>
-        <div className="flex items-center gap-3">
-          {email && <Link href="/profile" className="text-sm">{email}</Link>}
+        <Link href="/" className="font-semibold"></Link>
+        <div className="flex items-center gap-4">
+          {email && <Link href="/profile" className="text-sm mt-4">{email}</Link>}
           <form action={signOutAction}>
             <button type="submit" className="text-sm border rounded px-3 py-1">
               Sign out

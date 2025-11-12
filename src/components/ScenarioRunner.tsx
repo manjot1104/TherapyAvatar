@@ -115,7 +115,7 @@ function CloudsOverlay({
       >
         <div
           className={[
-            "pointer-events-auto w-full max-w-[560px]",
+            "pointer-events-auto w-full max-w=[560px]".replace("=", "-"), // tiny fix for accidental =
             "rounded-2xl border border-white/50 dark:border-slate-700",
             "bg-white/82 dark:bg-slate-900/72 backdrop-blur-lg",
             "px-3.5 py-3",
@@ -147,8 +147,8 @@ function CloudsOverlay({
         <div
           className={[
             "absolute pointer-events-auto flex flex-col items-end",
-            "gap-5 lg:gap-6", // more vertical spacing
-            "top-[60%] -translate-y-1/2", // hands-ish height
+            "gap-5 lg:gap-6",
+            "top-[60%] -translate-y-1/2",
             "right-[60%] md:right-[59%] lg:right-[58%] xl:right-[57%]",
             "max-w-[300px] md:max-w-[320px]",
           ].join(" ")}
@@ -274,11 +274,7 @@ export default function ScenarioRunner({
         .select("current_block,total_points")
         .eq("owner_id", ownerId)
         .eq("scenario_key", scenarioKey)
-        .or(
-          childId
-            ? `child_id.eq.${childId}`
-            : `child_id.is.null`
-        )
+        .or(childId ? `child_id.eq.${childId}` : `child_id.is.null`)
         .maybeSingle();
 
       if (data) {
@@ -316,6 +312,7 @@ export default function ScenarioRunner({
           await speakInBrowser(prompt, { rate: 0.96 });
           if (ttsToken.current !== myToken) throw new Error("stale");
 
+          // You can keep or remove this line. Keeping a neutral cue is fine.
           await speakInBrowser("Choose one.", { rate: 0.96 });
           if (ttsToken.current !== myToken) throw new Error("stale");
 
@@ -324,8 +321,11 @@ export default function ScenarioRunner({
           for (let i = 0; i < q.options.length; i++) {
             if (ttsToken.current !== myToken) throw new Error("stale");
             setVisibleCount(i + 1);
-            const spoken = `Option ${i + 1}: ${removeEmojiRough(q.options[i]).replace(/\s+/g, " ")}`;
-            await speakInBrowser(spoken, { rate: 0.96 });
+
+            // ✅ CHANGED: speak ONLY the option text (no "Option 1/2/3")
+            const spoken = removeEmojiRough(q.options[i]).replace(/\s+/g, " ");
+            await speakInBrowser(spoken, { rate: 0.96 }); // ✅ CHANGED
+
             if (ttsToken.current !== myToken) throw new Error("stale");
             await new Promise((r) => setTimeout(r, 60));
           }

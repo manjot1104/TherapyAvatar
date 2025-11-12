@@ -16,6 +16,20 @@ import { SCENARIOS } from "@/data/scenarios";
 
 export const dynamic = "force-dynamic";
 
+/** Helper: accept either `{ id: string }` or `Promise<{ id: string }>` */
+async function resolveId(
+  paramsMaybe: any
+): Promise<string> {
+  if (!paramsMaybe) return "";
+  // If it's a promise-like (has .then), await it
+  if (typeof paramsMaybe.then === "function") {
+    const p = await paramsMaybe;
+    return p?.id ?? "";
+  }
+  // Otherwise assume plain object
+  return paramsMaybe?.id ?? "";
+}
+
 type Attempt = {
   session_id: string | null;
   created_at: string;
@@ -36,11 +50,7 @@ type BlockAttempt = {
   passed: boolean;
 };
 
-export default async function ChildProgressPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ChildProgressPage(props: any) {
   const supabase = await serverClient();
 
   // ---- Auth ----
@@ -49,7 +59,8 @@ export default async function ChildProgressPage({
   } = await supabase.auth.getUser();
   if (!user) return <div className="p-6">Please sign in.</div>;
 
-  const { id: childId } = await params;
+  // ✅ Works for both sync and async params
+  const childId = await resolveId(props?.params);
 
   // ---- Load child (RLS scoped) ----
   const { data: child } = await supabase
@@ -63,7 +74,7 @@ export default async function ChildProgressPage({
       <div className="min-h-[70vh] grid place-items-center p-6">
         <div className="text-center">
           <p className="text-lg font-semibold">Child not found</p>
-          <Link
+        <Link
             className="mt-2 inline-flex items-center gap-2 underline underline-offset-4"
             href="/children"
           >

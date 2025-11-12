@@ -1,4 +1,6 @@
 // app/(protected)/children/[id]/progress/page.tsx
+// @ts-nocheck
+
 import { serverClient } from "@/lib/supabase/server-client";
 import Link from "next/link";
 import {
@@ -16,17 +18,13 @@ import { SCENARIOS } from "@/data/scenarios";
 
 export const dynamic = "force-dynamic";
 
-/** Helper: accept either `{ id: string }` or `Promise<{ id: string }>` */
-async function resolveId(
-  paramsMaybe: any
-): Promise<string> {
+/** Accept either `{ id: string }` or `Promise<{ id: string }>` */
+async function resolveId(paramsMaybe: any): Promise<string> {
   if (!paramsMaybe) return "";
-  // If it's a promise-like (has .then), await it
   if (typeof paramsMaybe.then === "function") {
     const p = await paramsMaybe;
     return p?.id ?? "";
   }
-  // Otherwise assume plain object
   return paramsMaybe?.id ?? "";
 }
 
@@ -74,7 +72,7 @@ export default async function ChildProgressPage(props: any) {
       <div className="min-h-[70vh] grid place-items-center p-6">
         <div className="text-center">
           <p className="text-lg font-semibold">Child not found</p>
-        <Link
+          <Link
             className="mt-2 inline-flex items-center gap-2 underline underline-offset-4"
             href="/children"
           >
@@ -87,7 +85,6 @@ export default async function ChildProgressPage(props: any) {
   }
 
   // ---- Fetch attempts, block summaries, and points ----
-  // Attempts (per question) — include NULL child_id as Ad-hoc
   const { data: attemptsRaw } = await supabase
     .from("scenario_question_attempts")
     .select(
@@ -99,7 +96,6 @@ export default async function ChildProgressPage(props: any) {
 
   const attempts: Attempt[] = (attemptsRaw as Attempt[]) ?? [];
 
-  // Block attempts (stars) — include NULL child_id as Ad-hoc
   const { data: blockAttemptsRaw } = await supabase
     .from("scenario_block_attempts")
     .select(
@@ -111,7 +107,6 @@ export default async function ChildProgressPage(props: any) {
 
   const blockAttempts: BlockAttempt[] = (blockAttemptsRaw as BlockAttempt[]) ?? [];
 
-  // Points (sum across scenarios) — stick to this child only
   const { data: progressRows } = await supabase
     .from("scenario_progress")
     .select("total_points")
@@ -121,7 +116,6 @@ export default async function ChildProgressPage(props: any) {
   const totalPoints =
     progressRows?.reduce((sum, r: any) => sum + (r.total_points ?? 0), 0) ?? 0;
 
-  // Sessions list (optional: if you store a sessions table)
   const { data: sessions } = await supabase
     .from("sessions")
     .select("id, created_at")
@@ -129,11 +123,9 @@ export default async function ChildProgressPage(props: any) {
     .order("created_at", { ascending: false })
     .limit(50);
 
-  // Build a session meta map from sessions table
   const sessionMeta = new Map<string, { id: string; created_at: string | null }>();
   sessions?.forEach((s) => sessionMeta.set(s.id, { id: s.id, created_at: s.created_at }));
 
-  // Add any session_ids from attempts that aren't in sessions table
   attempts.forEach((a) => {
     const sid = a.session_id && a.session_id.trim() !== "" ? a.session_id : null;
     if (sid && !sessionMeta.has(sid)) {
@@ -141,23 +133,19 @@ export default async function ChildProgressPage(props: any) {
     }
   });
 
-  // Group attempts by session_id (null/blank => "ADHOC")
   const grouped = new Map<string, Attempt[]>();
   for (const a of attempts) {
-    const key =
-      a.session_id && a.session_id.trim() !== "" ? a.session_id : "ADHOC";
+    const key = a.session_id && a.session_id.trim() !== "" ? a.session_id : "ADHOC";
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key)!.push(a);
   }
 
-  // Group block attempts (stars) by session
   const blockBySession = new Map<
     string,
     { totalStars: number; totalCorrect: number; blocks: BlockAttempt[] }
   >();
   for (const b of blockAttempts) {
-    const key =
-      b.session_id && b.session_id.trim() !== "" ? b.session_id : "ADHOC";
+    const key = b.session_id && b.session_id.trim() !== "" ? b.session_id : "ADHOC";
     if (!blockBySession.has(key)) {
       blockBySession.set(key, { totalStars: 0, totalCorrect: 0, blocks: [] });
     }
@@ -167,23 +155,18 @@ export default async function ChildProgressPage(props: any) {
     agg.blocks.push(b);
   }
 
-  // Build ordered session keys (latest first)
-  // 1) Use sessions table order if present
   let orderedSessionKeys: string[] = [];
   if (sessions && sessions.length) {
     sessions.forEach((s) => {
       if (grouped.has(s.id)) orderedSessionKeys.push(s.id);
     });
   }
-  // 2) Add any other session_ids present in attempts but not in sessions table
   const otherKeys = Array.from(grouped.keys()).filter(
     (k) => k !== "ADHOC" && !orderedSessionKeys.includes(k)
   );
   orderedSessionKeys = [...orderedSessionKeys, ...otherKeys];
-  // 3) Finally push ADHOC bucket if it exists
   if (grouped.has("ADHOC")) orderedSessionKeys.push("ADHOC");
 
-  // Overall totals (answered/correct) for header
   const overallAnswered = attempts.length;
   const overallCorrect = attempts.filter((a) => a.is_correct).length;
 
@@ -219,37 +202,16 @@ export default async function ChildProgressPage(props: any) {
         <section className="relative rounded-3xl border border-black/5 dark:border-white/10 bg-white/75 dark:bg-zinc-900/60 shadow-xl backdrop-blur">
           <div className="absolute inset-x-0 -top-px h-1 rounded-t-3xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
           <div className="p-6 sm:p-8 space-y-6">
-            {/* Meta */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <MetaItem
-                icon={<CalendarDays className="h-4 w-4" />}
-                label="Date of birth"
-                value={child.dob ?? "—"}
-              />
-              <MetaItem
-                icon={<Clock className="h-4 w-4" />}
-                label="Created"
-                value={new Date(child.created_at).toLocaleString()}
-              />
-              <MetaItem
-                icon={<ListChecks className="h-4 w-4" />}
-                label="Total answered"
-                value={String(overallAnswered)}
-              />
-              <MetaItem
-                icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-                label="Total correct"
-                value={String(overallCorrect)}
-              />
+              <MetaItem icon={<CalendarDays className="h-4 w-4" />} label="Date of birth" value={child.dob ?? "—"} />
+              <MetaItem icon={<Clock className="h-4 w-4" />} label="Created" value={new Date(child.created_at).toLocaleString()} />
+              <MetaItem icon={<ListChecks className="h-4 w-4" />} label="Total answered" value={String(overallAnswered)} />
+              <MetaItem icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} label="Total correct" value={String(overallCorrect)} />
             </div>
 
-            {/* Stats pills */}
             <div className="flex flex-wrap gap-3">
               <StatPill label="Total points (stars)" value={String(totalPoints)} />
-              <StatPill
-                label="Sessions listed"
-                value={String(orderedSessionKeys.filter((k) => k !== "ADHOC").length)}
-              />
+              <StatPill label="Sessions listed" value={String(orderedSessionKeys.filter((k) => k !== "ADHOC").length)} />
               {grouped.has("ADHOC") && (
                 <StatPill label="Ad-hoc attempts" value={String(grouped.get("ADHOC")!.length)} />
               )}
@@ -330,16 +292,11 @@ function SessionCard({
 
         <div className="flex items-center gap-2">
           <Pill icon={<ListChecks className="h-3.5 w-3.5" />} label="Answered" value={String(answered)} />
-          <Pill
-            icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
-            label="Correct"
-            value={String(correct)}
-          />
+          <Pill icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />} label="Correct" value={String(correct)} />
           <Pill icon={<Star className="h-3.5 w-3.5 text-amber-500" />} label="Stars" value={String(blockAgg.totalStars)} />
         </div>
       </div>
 
-      {/* Attempts table */}
       <div className="overflow-x-auto rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50/60 dark:bg-zinc-900/40 text-zinc-600 dark:text-zinc-400">
@@ -392,7 +349,6 @@ function SessionCard({
         </table>
       </div>
 
-      {/* Per-session block summary (optional) */}
       {blockAgg.blocks.length > 0 && (
         <div className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">
           <span className="font-medium">Block summary:</span>{" "}

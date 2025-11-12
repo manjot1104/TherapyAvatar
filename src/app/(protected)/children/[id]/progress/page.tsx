@@ -1,6 +1,7 @@
 // app/(protected)/children/[id]/progress/page.tsx
 import { serverClient } from "@/lib/supabase/server-client";
 import Link from "next/link";
+import type { PageProps } from "next";
 import {
   ArrowLeft,
   Baby,
@@ -38,7 +39,7 @@ type BlockAttempt = {
   passed: boolean;
 };
 
-export default async function ChildProgressPage({ params }: any) {
+export default async function ChildProgressPage(props: PageProps<{ id: string }>) {
   const supabase = await serverClient();
 
   // ---- Auth ----
@@ -47,7 +48,7 @@ export default async function ChildProgressPage({ params }: any) {
   } = await supabase.auth.getUser();
   if (!user) return <div className="p-6">Please sign in.</div>;
 
-  const { id: childId } = await Promise.resolve(params);
+  const { id: childId } = await props.params;
 
   // ---- Load child (RLS scoped) ----
   const { data: child } = await supabase

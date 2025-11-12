@@ -16,7 +16,7 @@ import { SCENARIOS } from "@/data/scenarios";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 type Attempt = {
   session_id: string | null;
@@ -47,7 +47,7 @@ export default async function ChildProgressPage({ params }: Params) {
   } = await supabase.auth.getUser();
   if (!user) return <div className="p-6">Please sign in.</div>;
 
-  const childId = params.id;
+  const { id: childId } = await params;
 
   // ---- Load child (RLS scoped) ----
   const { data: child } = await supabase

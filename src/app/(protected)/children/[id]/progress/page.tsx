@@ -16,7 +16,7 @@ import { SCENARIOS } from "@/data/scenarios";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: Promise<{ id: string }> };
+// Accept flexible props to avoid strict PageProps constraint differences across Next.js versions
 
 type Attempt = {
   session_id: string | null;
@@ -38,7 +38,7 @@ type BlockAttempt = {
   passed: boolean;
 };
 
-export default async function ChildProgressPage({ params }: Params) {
+export default async function ChildProgressPage({ params }: any) {
   const supabase = await serverClient();
 
   // ---- Auth ----
@@ -47,7 +47,7 @@ export default async function ChildProgressPage({ params }: Params) {
   } = await supabase.auth.getUser();
   if (!user) return <div className="p-6">Please sign in.</div>;
 
-  const { id: childId } = await params;
+  const { id: childId } = await Promise.resolve(params);
 
   // ---- Load child (RLS scoped) ----
   const { data: child } = await supabase

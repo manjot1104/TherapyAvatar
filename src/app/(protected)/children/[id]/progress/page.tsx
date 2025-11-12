@@ -1,7 +1,6 @@
 // app/(protected)/children/[id]/progress/page.tsx
 import { serverClient } from "@/lib/supabase/server-client";
 import Link from "next/link";
-import type { PageProps } from "next";
 import {
   ArrowLeft,
   Baby,
@@ -16,8 +15,6 @@ import {
 import { SCENARIOS } from "@/data/scenarios";
 
 export const dynamic = "force-dynamic";
-
-// Accept flexible props to avoid strict PageProps constraint differences across Next.js versions
 
 type Attempt = {
   session_id: string | null;
@@ -39,7 +36,11 @@ type BlockAttempt = {
   passed: boolean;
 };
 
-export default async function ChildProgressPage(props: PageProps<{ id: string }>) {
+export default async function ChildProgressPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const supabase = await serverClient();
 
   // ---- Auth ----
@@ -48,7 +49,7 @@ export default async function ChildProgressPage(props: PageProps<{ id: string }>
   } = await supabase.auth.getUser();
   if (!user) return <div className="p-6">Please sign in.</div>;
 
-  const { id: childId } = await props.params;
+  const { id: childId } = await params;
 
   // ---- Load child (RLS scoped) ----
   const { data: child } = await supabase
@@ -342,7 +343,7 @@ function SessionCard({
               <Th>Result</Th>
             </tr>
           </thead>
-        <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60 bg-white/70 dark:bg-zinc-950/40">
+          <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60 bg-white/70 dark:bg-zinc-950/40">
             {attempts.map((a, i) => {
               const meta = resolveQMeta(a);
               return (

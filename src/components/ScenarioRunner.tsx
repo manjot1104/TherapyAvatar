@@ -25,16 +25,9 @@ function removeEmojiRough(s: string) {
 }
 
 /* -------------------------------------------
-   Types
+   Types for option feedback
 -------------------------------------------- */
 type OptionStatus = "idle" | "correct" | "wrong";
-
-type QuestionAttemptRow = {
-  block_index: number;
-  question_index: number;
-  option_index: number;
-  is_correct: boolean;
-};
 
 /* -------------------------------------------
    CloudPill — mobile-first
@@ -87,6 +80,9 @@ function CloudPill({
 
 /* -------------------------------------------
    CloudsOverlay
+   - <md: bottom sheet (raised higher on mobile)
+   - md+: stacks anchored near avatar, spaced further out
+   - visibleCount controls progressive reveal
 -------------------------------------------- */
 function CloudsOverlay({
   options,
@@ -106,11 +102,13 @@ function CloudsOverlay({
   const { left, right } = useMemo(() => splitSides(options), [options]);
   if (!visible || options.length === 0) return null;
 
-  const bottomSafe = `calc(env(safe-area-inset-bottom, 0px) + 76px)`;
+  // Lift mobile sheet above mic bubble & safe-area
+  const MOBILE_BOTTOM_OFFSET = 112; // tweak 96/120/136 if needed
+  const bottomSafe = `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_OFFSET}px)`;
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20" aria-hidden>
-      {/* Phones: bottom sheet */}
+      {/* Phones: bottom sheet (raised) */}
       <div
         className="md:hidden absolute inset-x-2 bottom-0 flex justify-center pointer-events-none"
         style={{ bottom: bottomSafe }}
@@ -123,7 +121,7 @@ function CloudsOverlay({
             "px-3.5 py-3",
             "grid gap-2.5",
             "xsm-two-col",
-            "cloud-sheet",
+            "cloud-sheet shadow-xl",
           ].join(" ")}
         >
           {options.map((opt, idx) =>
@@ -143,14 +141,14 @@ function CloudsOverlay({
         </div>
       </div>
 
-      {/* Tablet/Desktop: stacks farther from center */}
+      {/* Tablet/Desktop: anchor near avatar but further apart */}
       <div className="hidden md:block">
-        {/* LEFT */}
+        {/* LEFT stack */}
         <div
           className={[
             "absolute pointer-events-auto flex flex-col items-end",
-            "gap-5 lg:gap-6",
-            "top-[60%] -translate-y-1/2",
+            "gap-5 lg:gap-6", // more vertical spacing
+            "top-[60%] -translate-y-1/2", // hands-ish height
             "right-[60%] md:right-[59%] lg:right-[58%] xl:right-[57%]",
             "max-w-[300px] md:max-w-[320px]",
           ].join(" ")}
@@ -178,7 +176,7 @@ function CloudsOverlay({
           })}
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT stack */}
         <div
           className={[
             "absolute pointer-events-auto flex flex-col items-start",
@@ -236,16 +234,8 @@ export default function ScenarioRunner({
 
   const [blockIdx, setBlockIdx] = useState(0);
   const [qIdx, setQIdx] = useState(0);
-
-  // Stars from passed blocks (legacy points)
+  const [answersCorrect, setAnswersCorrect] = useState(0);
   const [totalStars, setTotalStars] = useState(0);
-
-  // Running totals from attempts (for child profile)
-  const [totalAnswered, setTotalAnswered] = useState(0);
-  const [totalCorrect, setTotalCorrect] = useState(0);
-
-  // Per-block correct answers (for star calc 0..3)
-  const [blockCorrect, setBlockCorrect] = useState(0);
 
   const [showOptions, setShowOptions] = useState(false);
   const speaking = useRef(false);
@@ -265,9 +255,7 @@ export default function ScenarioRunner({
     (async () => {
       const {
         data: { user },
-        error,
       } = await sb.auth.getUser();
-      if (error) console.error("auth.getUser error:", error);
       setOwnerId(user?.id ?? null);
     })();
   }, [sb]);
@@ -277,78 +265,30 @@ export default function ScenarioRunner({
     if (selectedChildId !== undefined) setChildId(selectedChildId ?? null);
   }, [selectedChildId]);
 
-  /* --------- Resume progress & totals from attempts (and points) --------- */
+  /* resume progress */
   useEffect(() => {
     (async () => {
       if (!ownerId) return;
-
-      // 1) Load historical attempts for this child+scenario (NULL-safe child filter)
-      let q1 = sb
-        .from("scenario_question_attempts")
-        .select("block_index,question_index,option_index,is_correct")
+      const { data } = await sb
+        .from("scenario_progress")
+        .select("current_block,total_points")
         .eq("owner_id", ownerId)
         .eq("scenario_key", scenarioKey)
-        .order("block_index", { ascending: true })
-        .order("question_index", { ascending: true });
+        .or(
+          childId
+            ? `child_id.eq.${childId}`
+            : `child_id.is.null`
+        )
+        .maybeSingle();
 
-      q1 = childId ? q1.eq("child_id", childId) : q1.is("child_id", null);
-
-      const { data: attempts, error: attemptsErr } = await q1;
-      if (attemptsErr) console.error("Load attempts error:", attemptsErr);
-
-      const list: QuestionAttemptRow[] = attempts ?? [];
-
-      // Totals
-      let answered = 0;
-      let correct = 0;
-      const answeredSet = new Set<string>();
-      for (const a of list) {
-        const key = `${a.block_index}:${a.question_index}`;
-        answeredSet.add(key);
-        answered += 1;
-        if (a.is_correct) correct += 1;
+      if (data) {
+        const b = Math.max(0, Math.min(scenario.blocks.length - 1, data.current_block ?? 0));
+        setBlockIdx(b);
+        setTotalStars(Math.max(0, data.total_points ?? 0));
+      } else {
+        setBlockIdx(0);
+        setTotalStars(0);
       }
-      setTotalAnswered(answered);
-      setTotalCorrect(correct);
-
-      // Next unanswered
-      let nextB = 0;
-      let nextQ = 0;
-      let found = false;
-      for (let b = 0; b < scenario.blocks.length && !found; b++) {
-        const qs = scenario.blocks[b].questions.slice(0, 3);
-        for (let qi = 0; qi < qs.length; qi++) {
-          const k = `${b}:${qi}`;
-          if (!answeredSet.has(k)) {
-            nextB = b;
-            nextQ = qi;
-            found = true;
-            break;
-          }
-        }
-      }
-      if (!found) {
-        // everything answered at least once; restart last block
-        nextB = Math.min(scenario.blocks.length - 1, 0);
-        nextQ = 0;
-      }
-      setBlockIdx(nextB);
-      setQIdx(nextQ);
-      setBlockCorrect(0); // reset per-block counter
-
-      // 2) Load legacy stars/points (optional)
-      let q2 = sb
-        .from("scenario_progress")
-        .select("total_points")
-        .eq("owner_id", ownerId)
-        .eq("scenario_key", scenarioKey);
-
-      q2 = childId ? q2.eq("child_id", childId) : q2.is("child_id", null);
-
-      const { data: progress, error: progErr } = await q2.maybeSingle();
-      if (progErr) console.error("Load progress error:", progErr);
-
-      setTotalStars(Math.max(0, progress?.total_points ?? 0));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId, scenarioKey, childId]);
@@ -360,15 +300,9 @@ export default function ScenarioRunner({
     setVisibleCount(0);
   }, [blockIdx, qIdx, q.options.length]);
 
-  /* reset per-block correct counter when entering the first question */
-  useEffect(() => {
-    if (qIdx === 0) setBlockCorrect(0);
-  }, [blockIdx, qIdx]);
-
-  /* Speak question, then reveal/speak options one by one — wait for ownerId */
+  /* Speak question, then reveal/speak options one by one */
   useEffect(() => {
     (async () => {
-      if (!ownerId) return; // do not proceed until auth is ready
       const prompt = q.prompt;
       setLastAssistant(prompt);
       setShowOptions(false);
@@ -404,30 +338,28 @@ export default function ScenarioRunner({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId, blockIdx, qIdx]);
+  }, [blockIdx, qIdx]);
 
-  /* save (upsert) scenario_progress — ONLY when child is selected */
-  const saveProgress = async (nextBlock: number, newTotalPoints: number) => {
+  /* save (upsert) scenario_progress */
+  const saveProgress = async (nextBlock: number, newTotal: number) => {
     if (!ownerId) return;
-    if (!childId) return; // prevent PK clash when child not selected
-    const { error } = await sb.from("scenario_progress").upsert(
+    await sb.from("scenario_progress").upsert(
       {
         owner_id: ownerId,
-        child_id: childId,
+        child_id: childId ?? null,
         scenario_key: scenarioKey,
         current_block: nextBlock,
-        total_points: newTotalPoints,
+        total_points: newTotal,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "owner_id,child_id,scenario_key" }
     );
-    if (error) console.error("saveProgress error:", error);
   };
 
   /* audit block attempt */
-  const insertBlockAttempt = async (blockIndex: number, stars: number, passed: boolean, answers: number) => {
+  const insertAttempt = async (blockIndex: number, stars: number, passed: boolean, answers: number) => {
     if (!ownerId) return;
-    const { error } = await sb.from("scenario_block_attempts").insert({
+    await sb.from("scenario_block_attempts").insert({
       owner_id: ownerId,
       session_id: /^[0-9a-f-]{36}$/i.test(meta.sessionId) ? meta.sessionId : null,
       child_id: childId ?? null,
@@ -437,28 +369,21 @@ export default function ScenarioRunner({
       stars_earned: stars,
       passed,
     });
-    if (error) console.error("Block attempt insert error:", error);
   };
 
-  /* log single question attempt */
-  const insertQuestionAttempt = async (
-    blockIndex: number,
-    questionIndex: number,
-    optionIndex: number,
-    isCorrect: boolean
-  ) => {
+  /* per-question attempt */
+  const insertQuestionAttempt = async (questionIndex: number, optionIndex: number, isCorrect: boolean) => {
     if (!ownerId) return;
-    const { error } = await sb.from("scenario_question_attempts").insert({
+    await sb.from("scenario_question_attempts").insert({
       owner_id: ownerId,
-      session_id: /^[0-9a-f-]{36}$/i.test(meta.sessionId) ? meta.sessionId : null,
       child_id: childId ?? null,
+      session_id: /^[0-9a-f-]{36}$/i.test(meta.sessionId) ? meta.sessionId : null,
       scenario_key: scenarioKey,
-      block_index: blockIndex,
+      block_index: blockIdx,
       question_index: questionIndex,
       option_index: optionIndex,
       is_correct: isCorrect,
     });
-    if (error) console.error("SQA insert error:", error);
   };
 
   /* child picked an option */
@@ -470,26 +395,17 @@ export default function ScenarioRunner({
 
     addTurn({ speaker: "child", text: optText });
     if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
-      persistTurn(meta.sessionId, { speaker: "child", text: optText }).catch((e) =>
-        console.error("persistTurn error:", e)
-      );
+      persistTurn(meta.sessionId, { speaker: "child", text: optText }).catch(() => {});
     }
 
     const qNow = questions[qIdx];
     const correct = optIndex === qNow.correctIndex;
 
-    // UI feedback
     setOptionStatuses((prev) => prev.map((s, i) => (i === optIndex ? (correct ? "correct" : "wrong") : s)));
+    if (correct) setAnswersCorrect((c) => c + 1);
 
-    // Running totals
-    if (correct) setTotalCorrect((c) => c + 1);
-    setTotalAnswered((c) => c + 1);
-
-    // Persist this attempt
-    insertQuestionAttempt(blockIdx, qIdx, optIndex, correct).catch(() => {});
-
-    // Update per-block counter (for stars)
-    if (correct) setBlockCorrect((c) => c + 1);
+    // log per-question attempt
+    insertQuestionAttempt(qIdx, optIndex, correct).catch(() => {});
 
     try {
       await speakInBrowser(correct ? "Good job!" : "Okay, let's try the next one.", { rate: 0.98 });
@@ -497,32 +413,27 @@ export default function ScenarioRunner({
 
     await new Promise((r) => setTimeout(r, 350)); // dwell
 
-    // Move within block (3 questions per block)
     if (qIdx < 2) {
       setQIdx((i) => i + 1);
       return;
     }
 
-    // Block finished -> compute stars for this block attempt
-    const starsForThisBlock = blockCorrect + (correct ? 1 : 0); // 0..3
-    const passed = starsForThisBlock >= 2;
-    const newTotalPoints = totalStars + starsForThisBlock;
+    // block finished
+    const stars = answersCorrect + (correct ? 1 : 0); // 0..3
+    const passed = stars >= 2;
+    const newTotal = totalStars + stars;
 
     if (passed && /^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
-      persistMastery(meta.sessionId, `${scenario.skillLabel} • ${block.title}`, "success").catch((e) =>
-        console.error("persistMastery error:", e)
-      );
+      persistMastery(meta.sessionId, `${scenario.skillLabel} • ${block.title}`, "success").catch(() => {});
     }
 
-    await insertBlockAttempt(blockIdx, starsForThisBlock, passed, starsForThisBlock);
+    await insertAttempt(blockIdx, stars, passed, answersCorrect + (correct ? 1 : 0));
 
     const nextBlock = passed ? Math.min(blockIdx + 1, scenario.blocks.length - 1) : blockIdx;
-    await saveProgress(nextBlock, newTotalPoints);
+    await saveProgress(nextBlock, newTotal);
 
-    // Reset per-block counters
-    setBlockCorrect(0);
-
-    setTotalStars(newTotalPoints);
+    setTotalStars(newTotal);
+    setAnswersCorrect(0);
     setQIdx(0);
     setBlockIdx(nextBlock);
   };
@@ -530,7 +441,7 @@ export default function ScenarioRunner({
   return (
     <>
       {/* HUD (top-right) */}
-      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30 flex flex-wrap items-center gap-1.5 sm:gap-2">
+      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30 flex flex-wrap items-center gap-1 sm:gap-2">
         <Badge variant="outline" className="bg-white/70 backdrop-blur text-xs sm:text-sm">
           {scenario.title}
         </Badge>
@@ -540,30 +451,20 @@ export default function ScenarioRunner({
         <div className="inline-flex items-center gap-1 text-amber-500 text-xs sm:text-sm font-medium">
           <Star size={16} /> {totalStars}
         </div>
-        <Badge variant="outline" className="text-xs sm:text-sm">
-          Answered {totalAnswered}
-        </Badge>
-        <Badge variant="outline" className="text-xs sm:text-sm">
-          Correct {totalCorrect}
-        </Badge>
         <Button
           size="sm"
           variant="outline"
           className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
-          onClick={async () => {
+          onClick={() => {
             setBlockIdx(0);
             setQIdx(0);
             setTotalStars(0);
-            setTotalAnswered(0);
-            setTotalCorrect(0);
-            setBlockCorrect(0);
+            setAnswersCorrect(0);
             setOptionStatuses([]);
             setLocked(false);
             setVisibleCount(0);
             ++ttsToken.current; // cancel ongoing speech
-
-            // Keep historical logs, just reset progress points (only when child selected)
-            await saveProgress(0, 0);
+            saveProgress(0, 0);
           }}
         >
           Reset

@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { speakInBrowser } from "@/lib/speak";
 import { useSession } from "@/components/SessionSummary";
 import { createClient } from "@/lib/supabase/browser-client";
 import ScenarioRunner from "@/components/ScenarioRunner";
@@ -20,9 +19,9 @@ export default function TherapyMainPage() {
   const { addTurn, meta, setMeta } = useSession();
   const [lastAssistant, setLastAssistant] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [activeScenario, setActiveScenario] = useState<keyof typeof SCENARIOS>("greeting_teacher");
+  const [activeScenario, setActiveScenario] =
+    useState<keyof typeof SCENARIOS>("greeting_teacher");
 
-  // IMPORTANT: pass a real child id here when you navigate from /children
   const selectedChildId: string | null = null;
 
   // ensure session row
@@ -53,11 +52,11 @@ export default function TherapyMainPage() {
           <div
             className={[
               "avatar-stage relative w-full",
-              "min-h-[100svh] min-h-[100dvh]", // Full height on mobile
-              "md:min-h-[620px] lg:min-h-[680px]", // Taller on desktop
+              "min-h-[100svh] min-h-[100dvh]",
+              "md:min-h-[620px] lg:min-h-[680px]",
             ].join(" ")}
             style={{
-              paddingBottom: "max(0px, env(safe-area-inset-bottom))", // iOS safe-area
+              paddingBottom: "max(0px, env(safe-area-inset-bottom))",
             }}
           >
             {/* Background image fill */}
@@ -68,7 +67,7 @@ export default function TherapyMainPage() {
               priority
               className="object-cover pointer-events-none select-none"
             />
-            {/* Subtle gradient overlay for depth */}
+            {/* Subtle gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40 pointer-events-none" />
 
             {/* ===== Floating options (clouds) ===== */}
@@ -109,7 +108,9 @@ export default function TherapyMainPage() {
                 <div className="pointer-events-auto">
                   <Suspense fallback={null}>
                     <AudioRecorder
-                      onUserTranscript={(t) => addTurn({ speaker: "child", text: t })}
+                      onUserTranscript={(t) =>
+                        addTurn({ speaker: "child", text: t })
+                      }
                       onAssistant={(reply) => {
                         setLastAssistant(reply);
                         addTurn({ speaker: "assistant", text: reply });
@@ -131,27 +132,27 @@ export default function TherapyMainPage() {
         </CardContent>
       </Card>
 
-      {/* Scenario selector — compact; doesn’t reduce stage height on mobile */}
+      {/* Scenario selector */}
       <div className="mt-0 flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">Active scenario:</span>
         <Badge variant="outline">{SCENARIOS[activeScenario].title}</Badge>
         <div className="flex gap-2 flex-wrap">
-          {(["greeting_teacher", "ask_help", "wait_turn", "share_play", "calm_down"] as const).map(
-            (key) => (
-              <button
-                key={key}
-                onClick={() => setActiveScenario(key)}
-                className={[
-                  "px-3 py-1.5 rounded-lg text-sm border transition",
-                  activeScenario === key
-                    ? "bg-primary text-white border-primary"
-                    : "bg-background/60 hover:bg-background border-border",
-                ].join(" ")}
-              >
-                {SCENARIOS[key].title}
-              </button>
-            )
-          )}
+          {(
+            ["greeting_teacher", "ask_help", "wait_turn", "share_play", "calm_down"] as const
+          ).map((key) => (
+            <button
+              key={key}
+              onClick={() => setActiveScenario(key)}
+              className={[
+                "px-3 py-1.5 rounded-lg text-sm border transition",
+                activeScenario === key
+                  ? "bg-primary text-white border-primary"
+                  : "bg-background/60 hover:bg-background border-border",
+              ].join(" ")}
+            >
+              {SCENARIOS[key].title}
+            </button>
+          ))}
         </div>
       </div>
     </section>

@@ -65,7 +65,6 @@ function CloudPill({
         disabled ? "opacity-95 cursor-not-allowed" : "",
       ].join(" ")}
     >
-      {/* Cloud dots only when idle so feedback colors look clean */}
       {status === "idle" && (
         <>
           <span className="hidden md:block absolute -left-3 bottom-1.5 w-3.5 h-3.5 rounded-full bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700" />
@@ -80,9 +79,6 @@ function CloudPill({
 
 /* -------------------------------------------
    CloudsOverlay
-   - <md: bottom sheet (raised higher on mobile)
-   - md+: stacks anchored near avatar, spaced further out
-   - visibleCount controls progressive reveal
 -------------------------------------------- */
 function CloudsOverlay({
   options,
@@ -102,8 +98,7 @@ function CloudsOverlay({
   const { left, right } = useMemo(() => splitSides(options), [options]);
   if (!visible || options.length === 0) return null;
 
-  // Lift mobile sheet above mic bubble & safe-area
-  const MOBILE_BOTTOM_OFFSET = 112; // tweak 96/120/136 if needed
+  const MOBILE_BOTTOM_OFFSET = 112;
   const bottomSafe = `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_OFFSET}px)`;
 
   return (
@@ -115,7 +110,7 @@ function CloudsOverlay({
       >
         <div
           className={[
-            "pointer-events-auto w-full max-w=[560px]".replace("=", "-"), // tiny fix for accidental =
+            "pointer-events-auto w-full max-w-[560px]",
             "rounded-2xl border border-white/50 dark:border-slate-700",
             "bg-white/82 dark:bg-slate-900/72 backdrop-blur-lg",
             "px-3.5 py-3",
@@ -126,7 +121,11 @@ function CloudsOverlay({
         >
           {options.map((opt, idx) =>
             idx < visibleCount ? (
-              <div key={`M-${idx}`} className="sr-float1" style={{ animationDelay: `${idx * 0.08}s` }}>
+              <div
+                key={`M-${idx}`}
+                className="sr-float1"
+                style={{ animationDelay: `${idx * 0.08}s` }}
+              >
                 <CloudPill
                   text={opt}
                   status={statuses[idx] ?? "idle"}
@@ -312,7 +311,6 @@ export default function ScenarioRunner({
           await speakInBrowser(prompt, { rate: 0.96 });
           if (ttsToken.current !== myToken) throw new Error("stale");
 
-          // You can keep or remove this line. Keeping a neutral cue is fine.
           await speakInBrowser("Choose one.", { rate: 0.96 });
           if (ttsToken.current !== myToken) throw new Error("stale");
 
@@ -322,9 +320,9 @@ export default function ScenarioRunner({
             if (ttsToken.current !== myToken) throw new Error("stale");
             setVisibleCount(i + 1);
 
-            // ✅ CHANGED: speak ONLY the option text (no "Option 1/2/3")
+            // ✅ Only actual option text (no "Option 1/2/3")
             const spoken = removeEmojiRough(q.options[i]).replace(/\s+/g, " ");
-            await speakInBrowser(spoken, { rate: 0.96 }); // ✅ CHANGED
+            await speakInBrowser(spoken, { rate: 0.96 });
 
             if (ttsToken.current !== myToken) throw new Error("stale");
             await new Promise((r) => setTimeout(r, 60));
@@ -357,7 +355,12 @@ export default function ScenarioRunner({
   };
 
   /* audit block attempt */
-  const insertAttempt = async (blockIndex: number, stars: number, passed: boolean, answers: number) => {
+  const insertAttempt = async (
+    blockIndex: number,
+    stars: number,
+    passed: boolean,
+    answers: number
+  ) => {
     if (!ownerId) return;
     await sb.from("scenario_block_attempts").insert({
       owner_id: ownerId,
@@ -372,7 +375,11 @@ export default function ScenarioRunner({
   };
 
   /* per-question attempt */
-  const insertQuestionAttempt = async (questionIndex: number, optionIndex: number, isCorrect: boolean) => {
+  const insertQuestionAttempt = async (
+    questionIndex: number,
+    optionIndex: number,
+    isCorrect: boolean
+  ) => {
     if (!ownerId) return;
     await sb.from("scenario_question_attempts").insert({
       owner_id: ownerId,
@@ -401,15 +408,21 @@ export default function ScenarioRunner({
     const qNow = questions[qIdx];
     const correct = optIndex === qNow.correctIndex;
 
-    setOptionStatuses((prev) => prev.map((s, i) => (i === optIndex ? (correct ? "correct" : "wrong") : s)));
+    setOptionStatuses((prev) =>
+      prev.map((s, i) => (i === optIndex ? (correct ? "correct" : "wrong") : s))
+    );
     if (correct) setAnswersCorrect((c) => c + 1);
 
-    // log per-question attempt
     insertQuestionAttempt(qIdx, optIndex, correct).catch(() => {});
 
     try {
-      await speakInBrowser(correct ? "Good job!" : "Okay, let's try the next one.", { rate: 0.98 });
-    } catch {}
+      await speakInBrowser(
+        correct ? "Good job!" : "Okay, let's try the next one.",
+        { rate: 0.98 }
+      );
+    } catch {
+      // ignore
+    }
 
     await new Promise((r) => setTimeout(r, 350)); // dwell
 
@@ -424,7 +437,9 @@ export default function ScenarioRunner({
     const newTotal = totalStars + stars;
 
     if (passed && /^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
-      persistMastery(meta.sessionId, `${scenario.skillLabel} • ${block.title}`, "success").catch(() => {});
+      persistMastery(meta.sessionId, `${scenario.skillLabel} • ${block.title}`, "success").catch(
+        () => {}
+      );
     }
 
     await insertAttempt(blockIdx, stars, passed, answersCorrect + (correct ? 1 : 0));
@@ -463,7 +478,7 @@ export default function ScenarioRunner({
             setOptionStatuses([]);
             setLocked(false);
             setVisibleCount(0);
-            ++ttsToken.current; // cancel ongoing speech
+            ++ttsToken.current;
             saveProgress(0, 0);
           }}
         >

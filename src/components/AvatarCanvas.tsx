@@ -1,14 +1,17 @@
+// src/components/AvatarCanvas.tsx
 "use client";
 
-import React, { Suspense, useEffect, useRef } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, CameraControls } from "@react-three/drei";
+import { useGLTF, Environment } from "@react-three/drei";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three-stdlib";
-import { useState } from "react";
 
 type VisemeKey = string;
+
+// 👉 yahan se face kitna upar hai control hoga
+const PITCH_UP = -0.18; // -0.10 se -0.30 ke beech try kar sakta hai
 
 function AvatarModel({
   url,
@@ -70,16 +73,23 @@ function AvatarModel({
     const playVisemes = (timeline: { time: number; key: VisemeKey; value: number }[]) => {
       for (const k of Object.keys(activeWeights.current)) setWeight(k, 0);
       if (!timeline?.length) return;
+
       const MIN_GAP = 55;
       const tline: typeof timeline = [];
       for (const evt of timeline) {
         const last = tline[tline.length - 1];
-        if (!last) { tline.push(evt); continue; }
+        if (!last) {
+          tline.push(evt);
+          continue;
+        }
         if (evt.key === last.key && (evt.time - last.time) < MIN_GAP) {
           last.value = Math.max(last.value, evt.value);
           last.time = Math.max(last.time, evt.time - 10);
-        } else tline.push(evt);
+        } else {
+          tline.push(evt);
+        }
       }
+
       const START = 60;
       let i = 0;
       const start = performance.now() + START;
@@ -113,9 +123,18 @@ function AvatarModel({
 
   const root = useRef<THREE.Object3D>(null);
   const t = useRef(0);
+
+  // 👉 initial pose: face thoda upar + still
+  useEffect(() => {
+    if (root.current) {
+      root.current.rotation.set(PITCH_UP, 0, 0); // x, y, z
+    }
+  }, []);
+
   useFrame((_, dt) => {
     t.current += dt;
-    if (root.current) root.current.rotation.y = Math.sin(t.current * 0.5) * 0.05;
+
+    // ❌ koi sway / ghoomna nahi, sirf blink
     if (Math.random() < dt * 0.2) {
       const L = morphTargets.current["eyeBlink_L"];
       const R = morphTargets.current["eyeBlink_R"];
@@ -135,20 +154,27 @@ function AvatarModel({
 
 export default function AvatarCanvas({ modelUrl }: { modelUrl: string }) {
   const [err, setErr] = useState<string | null>(null);
+
   useEffect(() => {
     if (!modelUrl) {
       setErr("Set NEXT_PUBLIC_RPM_URL in .env.local");
       return;
     }
     (async () => {
-      try { const head = await fetch(modelUrl, { method: "HEAD" }); if (!head.ok) throw new Error(`${head.status}`); }
-      catch (e: any) { setErr(`Cannot reach model: ${e?.message ?? e}`); }
+      try {
+        const head = await fetch(modelUrl, { method: "HEAD" });
+        if (!head.ok) throw new Error(`${head.status}`);
+      } catch (e: any) {
+        setErr(`Cannot reach model: ${e?.message ?? e}`);
+      }
     })();
   }, [modelUrl]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && modelUrl) {
-      try { (useGLTF as any).preload?.(modelUrl); } catch {}
+      try {
+        (useGLTF as any).preload?.(modelUrl);
+      } catch {}
     }
   }, [modelUrl]);
 
@@ -157,15 +183,18 @@ export default function AvatarCanvas({ modelUrl }: { modelUrl: string }) {
   };
 
   if (!modelUrl || err) {
-    return <div className="grid place-items-center w-full h-full min-h-[520px] bg-slate-100 rounded-xl text-slate-600 p-4 text-center">
-      {err ?? "Set NEXT_PUBLIC_RPM_URL in .env.local"}
-    </div>;
+    return (
+      <div className="grid place-items-center w-full h-full min-h-[520px] bg-slate-100 rounded-xl text-slate-600 p-4 text-center">
+        {err ?? "Set NEXT_PUBLIC_RPM_URL in .env.local"}
+      </div>
+    );
   }
 
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 1.2, 2.0], fov: 38 }}
+      // 👉 camera bhi thoda niche kiya, taa ki top-down feel kam ho
+      camera={{ position: [0, 1.1, 2.1], fov: 38 }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       dpr={[1, 2]}
     >
@@ -176,7 +205,8 @@ export default function AvatarCanvas({ modelUrl }: { modelUrl: string }) {
         <AvatarModel url={modelUrl} onReady={handleReady} />
         <Environment preset="city" />
       </Suspense>
-      <CameraControls makeDefault />
+
+      {/* CameraControls deliberately removed => no zoom/rotate/pan */}
     </Canvas>
   );
 }

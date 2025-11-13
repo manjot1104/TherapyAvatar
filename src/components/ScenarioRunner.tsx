@@ -98,7 +98,7 @@ function CloudsOverlay({
   const { left, right } = useMemo(() => splitSides(options), [options]);
   if (!visible || options.length === 0) return null;
 
-  const MOBILE_BOTTOM_OFFSET = 112;
+  const MOBILE_BOTTOM_OFFSET = 165;
   const bottomSafe = `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_OFFSET}px)`;
 
   return (
@@ -337,7 +337,8 @@ export default function ScenarioRunner({
       stopSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockIdx, qIdx]);
+  }, [blockIdx, qIdx, scenarioKey]);
+
 
   /* save (upsert) scenario_progress */
   const saveProgress = async (nextBlock: number, newTotal: number) => {

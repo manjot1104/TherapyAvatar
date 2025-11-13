@@ -11,15 +11,9 @@ import { createClient } from "@/lib/supabase/browser-client";
 import ScenarioRunner from "@/components/ScenarioRunner";
 import { SCENARIOS } from "@/data/scenarios";
 
-const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), {
-  ssr: false,
-});
-const EmotionTracker = dynamic(() => import("@/components/EmotionTracker"), {
-  ssr: false,
-});
-const AudioRecorder = dynamic(() => import("@/components/AudioRecorder"), {
-  ssr: false,
-});
+const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), { ssr: false });
+const EmotionTracker = dynamic(() => import("@/components/EmotionTracker"), { ssr: false });
+const AudioRecorder = dynamic(() => import("@/components/AudioRecorder"), { ssr: false });
 
 export default function TherapyMainPage() {
   const { addTurn, meta, setMeta } = useSession();
@@ -38,17 +32,12 @@ export default function TherapyMainPage() {
         data: { user },
       } = await sb.auth.getUser();
       if (!user) return;
-
       if (!/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
         const { data, error } = await sb
           .from("sessions")
-          .insert({
-            user_id: user.id,
-            title: meta.sessionTitle || "Therapy Session",
-          })
+          .insert({ user_id: user.id, title: meta.sessionTitle || "Therapy Session" })
           .select("id")
           .single();
-
         if (!error && data?.id) setMeta({ sessionId: data.id });
       }
     })();
@@ -59,7 +48,7 @@ export default function TherapyMainPage() {
     <section className="grid gap-4">
       <Card className="bg-card/90 border-border shadow-sm overflow-hidden">
         <CardContent className="p-0">
-          {/* ======= AVATAR STAGE ======= */}
+          {/* ======= FULL-BLEED AVATAR STAGE (mobile 100%) ======= */}
           <div
             className={[
               "avatar-stage relative w-full",
@@ -70,6 +59,7 @@ export default function TherapyMainPage() {
               paddingBottom: "max(0px, env(safe-area-inset-bottom))",
             }}
           >
+            {/* Background image fill */}
             <Image
               src="/bg.png"
               alt=""
@@ -77,34 +67,17 @@ export default function TherapyMainPage() {
               priority
               className="object-cover pointer-events-none select-none"
             />
-
+            {/* Subtle gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40 pointer-events-none" />
 
-            {/* ===== CLOUD OPTIONS (responsive placement) ===== */}
-            <>
-              {/* Desktop & Tablet (≥768px): show options ABOVE avatar stage */}
-              <div className="hidden md:block w-full text-center mb-[-20px]">
-                <ScenarioRunner
-                  scenarioKey={activeScenario}
-                  setLastAssistant={setLastAssistant}
-                  selectedChildId={selectedChildId || undefined}
-                />
-              </div>
+            {/* ===== Floating options (clouds) ===== */}
+            <ScenarioRunner
+              scenarioKey={activeScenario}
+              setLastAssistant={setLastAssistant}
+              selectedChildId={selectedChildId || undefined}
+            />
 
-              {/* Mobile (<768px): overlay options inside avatar stage */}
-              <div
-                className="relative z-20 md:hidden"
-                style={{ marginTop: "-40px" }} // only mobile offset
-              >
-                <ScenarioRunner
-                  scenarioKey={activeScenario}
-                  setLastAssistant={setLastAssistant}
-                  selectedChildId={selectedChildId || undefined}
-                />
-              </div>
-            </>
-
-            {/* ===== AVATAR CANVAS ===== */}
+            {/* ===== Avatar Canvas (fills stage) ===== */}
             <div className="absolute inset-0 z-10">
               <Suspense
                 fallback={
@@ -117,7 +90,7 @@ export default function TherapyMainPage() {
               </Suspense>
             </div>
 
-            {/* ===== EMOTION CAMERA ===== */}
+            {/* ===== Emotion camera (corner) ===== */}
             <div className="avatar-overlay overlay-smart drop-shadow-md absolute right-2 top-2 z-20">
               <div className="cam-box rounded-xl overflow-hidden border border-white/40 backdrop-blur bg-white/30 dark:bg-zinc-900/40">
                 <Suspense fallback={null}>
@@ -126,12 +99,10 @@ export default function TherapyMainPage() {
               </div>
             </div>
 
-            {/* ===== MIC BUBBLE ===== */}
+            {/* ===== Mic bubble (bottom center, safe-area aware) ===== */}
             <div
               className="absolute inset-x-0 z-20 pointer-events-none"
-              style={{
-                bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
-              }}
+              style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
             >
               <div className="flex justify-center">
                 <div className="pointer-events-auto">
@@ -152,7 +123,7 @@ export default function TherapyMainPage() {
             </div>
           </div>
 
-          {/* ===== CAPTION BAR ===== */}
+          {/* Caption bar */}
           <div className="px-3 md:px-4 py-3">
             <div className="rounded-xl bg-primary/10 dark:bg-primary/20 text-primary px-3 py-2 text-center border border-border">
               {lastAssistant || "Let's begin our fun activity!"}
@@ -161,20 +132,13 @@ export default function TherapyMainPage() {
         </CardContent>
       </Card>
 
-      {/* ===== SCENARIO SELECTOR ===== */}
+      {/* Scenario selector */}
       <div className="mt-0 flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">Active scenario:</span>
         <Badge variant="outline">{SCENARIOS[activeScenario].title}</Badge>
-
         <div className="flex gap-2 flex-wrap">
           {(
-            [
-              "greeting_teacher",
-              "ask_help",
-              "wait_turn",
-              "share_play",
-              "calm_down",
-            ] as const
+            ["greeting_teacher", "ask_help", "wait_turn", "share_play", "calm_down"] as const
           ).map((key) => (
             <button
               key={key}

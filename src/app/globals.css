@@ -340,3 +340,12 @@
 /* Radius tweak by screen size */
 @media (min-width: 768px)  { :root { --radius: 0.625rem; } }
 @media (min-width: 1280px) { :root { --radius: 0.75rem; } }
+
+/* ==== ONLY MOBILE (<767px) OPTIONS SHIFT ==== */
+@layer base {
+  @media (max-width: 767px) {
+    .mobile-options-only {
+      margin-top: -48px !important; /* adjust if needed */
+    }
+  }
+}

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 
 type SkillKey = string;
 
-type Props = {
+export type TherapistPanelProps = {
   disabled?: boolean;
   currentSkill: SkillKey;
   onPause: () => void;
@@ -33,7 +33,7 @@ export default function TherapistPanel({
   onMarkAttempt,
   onMarkSuccess,
   onAsk,
-}: Props) {
+}: TherapistPanelProps) {
   const [q, setQ] = useState("");
   const canSend = useMemo(() => q.trim().length > 0, [q]);
 
@@ -70,7 +70,11 @@ export default function TherapistPanel({
         <Button variant="outline" onClick={onPause} disabled={disabled}>
           ⏸ Pause
         </Button>
-        <Button variant="outline" onClick={() => void onRepeat()} disabled={disabled}>
+        <Button
+          variant="outline"
+          onClick={() => void onRepeat()}
+          disabled={disabled}
+        >
           🔁 Repeat
         </Button>
         <Button variant="outline" onClick={onSimplify} disabled={disabled}>

@@ -29,7 +29,9 @@ export default function TherapyMainPage() {
   useEffect(() => {
     (async () => {
       const sb = createClient();
-      const { data: { user } } = await sb.auth.getUser();
+      const {
+        data: { user },
+      } = await sb.auth.getUser();
       if (!user) return;
       if (!/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
         const { data, error } = await sb
@@ -51,19 +53,21 @@ export default function TherapyMainPage() {
           <div
             className={[
               "avatar-stage relative w-full",
-              // Full height on mobile using modern viewport units (+ fallback)
-              "min-h-[100svh] min-h-[100dvh]",
-              // Desktop/tablet: keep a nice tall stage
-              "md:min-h-[620px] lg:min-h-[680px]",
+              "min-h-[100svh] min-h-[100dvh]", // Full height on mobile
+              "md:min-h-[620px] lg:min-h-[680px]", // Taller on desktop
             ].join(" ")}
-            // Safe-area friendly padding at the bottom for mic bubble overlap
             style={{
-              // For iOS dynamic bars—ensure no content hides behind home indicator
-              paddingBottom: "max(0px, env(safe-area-inset-bottom))",
+              paddingBottom: "max(0px, env(safe-area-inset-bottom))", // iOS safe-area
             }}
           >
             {/* Background image fill */}
-            <Image src="/bg.png" alt="" fill priority className="object-cover pointer-events-none select-none" />
+            <Image
+              src="/bg.png"
+              alt=""
+              fill
+              priority
+              className="object-cover pointer-events-none select-none"
+            />
             {/* Subtle gradient overlay for depth */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40 pointer-events-none" />
 
@@ -106,7 +110,10 @@ export default function TherapyMainPage() {
                   <Suspense fallback={null}>
                     <AudioRecorder
                       onUserTranscript={(t) => addTurn({ speaker: "child", text: t })}
-                      onAssistant={(reply) => { setLastAssistant(reply); addTurn({ speaker: "assistant", text: reply }); }}
+                      onAssistant={(reply) => {
+                        setLastAssistant(reply);
+                        addTurn({ speaker: "assistant", text: reply });
+                      }}
                       onProcessingChange={(v) => setProcessing(v)}
                     />
                   </Suspense>
@@ -129,20 +136,22 @@ export default function TherapyMainPage() {
         <span className="text-sm text-muted-foreground">Active scenario:</span>
         <Badge variant="outline">{SCENARIOS[activeScenario].title}</Badge>
         <div className="flex gap-2 flex-wrap">
-          {(["greeting_teacher","ask_help","wait_turn","share_play","calm_down"] as const).map(key => (
-            <button
-              key={key}
-              onClick={() => setActiveScenario(key)}
-              className={[
-                "px-3 py-1.5 rounded-lg text-sm border transition",
-                activeScenario===key
-                  ? "bg-primary text-white border-primary"
-                  : "bg-background/60 hover:bg-background border-border",
-              ].join(" ")}
-            >
-              {SCENARIOS[key].title}
-            </button>
-          ))}
+          {(["greeting_teacher", "ask_help", "wait_turn", "share_play", "calm_down"] as const).map(
+            (key) => (
+              <button
+                key={key}
+                onClick={() => setActiveScenario(key)}
+                className={[
+                  "px-3 py-1.5 rounded-lg text-sm border transition",
+                  activeScenario === key
+                    ? "bg-primary text-white border-primary"
+                    : "bg-background/60 hover:bg-background border-border",
+                ].join(" ")}
+              >
+                {SCENARIOS[key].title}
+              </button>
+            )
+          )}
         </div>
       </div>
     </section>

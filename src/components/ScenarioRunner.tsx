@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
 import { SCENARIOS } from "@/data/scenarios";
-import { speakInBrowser } from "@/lib/speak";
+import { speakInBrowser, stopSpeech } from "@/lib/speak";
 import { createClient } from "@/lib/supabase/browser-client";
 import { useSession } from "@/components/SessionSummary";
 import { persistTurn, persistMastery } from "@/lib/session-persist";
@@ -292,49 +292,50 @@ export default function ScenarioRunner({
   useEffect(() => {
     setOptionStatuses(Array(q.options.length).fill("idle"));
     setLocked(false);
-    setVisibleCount(0);
+    setVisibleCount(q.options.length); // ✅ show all by default
+    setShowOptions(true);              // ✅ options visible immediately
   }, [blockIdx, qIdx, q.options.length]);
 
-  /* Speak question, then reveal/speak options one by one */
+  /* Speak question + options in background (do NOT block UI) */
   useEffect(() => {
+    const prompt = q.prompt;
+    setLastAssistant(prompt);
+
+    const myToken = ++ttsToken.current;
+
     (async () => {
-      const prompt = q.prompt;
-      setLastAssistant(prompt);
-      setShowOptions(false);
-
-      const myToken = ++ttsToken.current;
-
       try {
-        if (!speaking.current) {
-          speaking.current = true;
+        if (speaking.current) return;
+        speaking.current = true;
 
-          await speakInBrowser(prompt, { rate: 0.96 });
+        // Question
+        await speakInBrowser(prompt, { rate: 0.96 });
+        if (ttsToken.current !== myToken) throw new Error("stale");
+
+        // Small cue
+        await speakInBrowser("Choose one.", { rate: 0.96 });
+        if (ttsToken.current !== myToken) throw new Error("stale");
+
+        // Options one-by-one (spoken only, UI already visible)
+        for (let i = 0; i < q.options.length; i++) {
           if (ttsToken.current !== myToken) throw new Error("stale");
-
-          await speakInBrowser("Choose one.", { rate: 0.96 });
+          const spoken = removeEmojiRough(q.options[i]).replace(/\s+/g, " ");
+          await speakInBrowser(spoken, { rate: 0.96 });
           if (ttsToken.current !== myToken) throw new Error("stale");
-
-          setShowOptions(true);
-
-          for (let i = 0; i < q.options.length; i++) {
-            if (ttsToken.current !== myToken) throw new Error("stale");
-            setVisibleCount(i + 1);
-
-            // ✅ Only actual option text (no "Option 1/2/3")
-            const spoken = removeEmojiRough(q.options[i]).replace(/\s+/g, " ");
-            await speakInBrowser(spoken, { rate: 0.96 });
-
-            if (ttsToken.current !== myToken) throw new Error("stale");
-            await new Promise((r) => setTimeout(r, 60));
-          }
+          await new Promise((r) => setTimeout(r, 60));
         }
       } catch {
-        // ignore stale/cancel
+        // ignore stale / iOS block
       } finally {
         speaking.current = false;
-        setShowOptions(true);
       }
     })();
+
+    return () => {
+      // cancel further speech when question changes
+      ++ttsToken.current;
+      stopSpeech();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockIdx, qIdx]);
 
@@ -399,6 +400,7 @@ export default function ScenarioRunner({
     setLocked(true);
 
     ++ttsToken.current; // stop further option speech
+    stopSpeech();
 
     addTurn({ speaker: "child", text: optText });
     if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
@@ -479,6 +481,7 @@ export default function ScenarioRunner({
             setLocked(false);
             setVisibleCount(0);
             ++ttsToken.current;
+            stopSpeech();
             saveProgress(0, 0);
           }}
         >

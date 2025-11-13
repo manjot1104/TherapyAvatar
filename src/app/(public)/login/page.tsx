@@ -1,11 +1,11 @@
 // app/(public)/login/page.tsx
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/browser-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react";
 
-export default function LoginPage() {
+function LoginInner() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,17 +26,22 @@ export default function LoginPage() {
     // Show any error forwarded from /auth/callback
     const urlErr = searchParams.get("error");
     const msg = searchParams.get("message");
-    if (urlErr || msg) setErr(msg || urlErr);
+    if (urlErr || msg) setErr(msg || urlErr || null);
 
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) router.replace("/");
     });
+
     const s = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) router.replace("/");
     });
     unsub = s.data;
-    return () => unsub?.subscription.unsubscribe();
-  }, [searchParams, router, supabase.auth]);
+
+    return () => {
+      unsub?.subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, router]);
 
   async function sendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -164,8 +169,8 @@ export default function LoginPage() {
 
             {/* Forms */}
             <div className="space-y-6">
-              {mode === "otp" && (
-                !otpSent ? (
+              {mode === "otp" &&
+                (!otpSent ? (
                   <form onSubmit={sendOtp} className="space-y-4">
                     <LabeledInput
                       label="Email"
@@ -209,8 +214,7 @@ export default function LoginPage() {
                       Didn’t get it? Go back & resend
                     </button>
                   </form>
-                )
-              )}
+                ))}
 
               {mode === "password" && (
                 <form onSubmit={signInPassword} className="space-y-4">
@@ -314,6 +318,15 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  // ✅ Wrap the hook-using component in Suspense to satisfy Next 15
+  return (
+    <Suspense fallback={<div className="p-4 text-center">Loading login…</div>}>
+      <LoginInner />
+    </Suspense>
   );
 }
 
@@ -424,9 +437,18 @@ function GoogleIcon() {
         fill="#EA4335"
         d="M12 10.2v3.9h5.5c-.24 1.26-1.66 3.7-5.5 3.7-3.31 0-6-2.73-6-6.1S8.69 5.6 12 5.6c1.89 0 3.16.8 3.89 1.49l2.65-2.55C17.2 3.19 14.8 2 12 2 6.48 2 2 6.48 2 12s4.48 10 10 10c5.77 0 9.58-4.05 9.58-9.76 0-.66-.07-1.16-.16-1.65H12z"
       />
-      <path fill="#34A853" d="M3.15 7.96l3.2 2.35C7.19 8.46 9.41 6.8 12 6.8c1.89 0 3.16.8 3.89 1.49l2.65-2.55C17.2 3.19 14.8 2 12 2 8.4 2 5.32 3.87 3.15 7.96z" />
-      <path fill="#FBBC05" d="M12 22c2.72 0 5.01-.9 6.69-2.46l-3.08-2.53c-.85.59-1.99 1.02-3.61 1.02-2.96 0-5.48-2-6.38-4.74l-3.2 2.4C4.57 19.93 8 22 12 22z" />
-      <path fill="#4285F4" d="M21.58 12.24c0-.66-.07-1.16-.16-1.65H12v3.9h5.5c-.24 1.26-1.66 3.7-5.5 3.7-3.31 0-6-2.73-6-6.1 0-.75.12-1.46.34-2.11l-3.2-2.35C2.42 8.59 2 10.23 2 12c0 5.52 4.48 10 10 10 5.77 0 9.58-4.05 9.58-9.76z" />
+      <path
+        fill="#34A853"
+        d="M3.15 7.96l3.2 2.35C7.19 8.46 9.41 6.8 12 6.8c1.89 0 3.16.8 3.89 1.49l2.65-2.55C17.2 3.19 14.8 2 12 2 8.4 2 5.32 3.87 3.15 7.96z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M12 22c2.72 0 5.01-.9 6.69-2.46l-3.08-2.53c-.85.59-1.99 1.02-3.61 1.02-2.96 0-5.48-2-6.38-4.74l-3.2 2.4C4.57 19.93 8 22 12 22z"
+      />
+      <path
+        fill="#4285F4"
+        d="M21.58 12.24c0-.66-.07-1.16-.16-1.65H12v3.9h5.5c-.24 1.26-1.66 3.7-5.5 3.7-3.31 0-6-2.73-6-6.1 0-.75.12-1.46.34-2.11l-3.2-2.35C2.42 8.59 2 10.23 2 12c0 5.52 4.48 10 10 10 5.77 0 9.58-4.05 9.58-9.76z"
+      />
     </svg>
   );
 }

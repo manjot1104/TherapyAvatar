@@ -322,7 +322,7 @@ function LoginInner() {
 }
 
 export default function LoginPage() {
-  // ✅ Wrap the hook-using component in Suspense to satisfy Next 15
+  // ✅ useSearchParams lives inside LoginInner, which is wrapped in Suspense
   return (
     <Suspense fallback={<div className="p-4 text-center">Loading login…</div>}>
       <LoginInner />
@@ -420,6 +420,7 @@ function Divider({ text }: { text?: string }) {
       {text && (
         <span className="text-xs text-zinc-500 whitespace-nowrap">{text}</span>
       )}
+      <span className="h-[1px] w-full bg-zinc-200 dark:bg-zinc-800" />
       <span className="h-[1px] w-full bg-zinc-200 dark:bg-zinc-800" />
     </div>
   );

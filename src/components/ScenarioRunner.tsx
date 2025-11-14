@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
-import { SCENARIOS } from "@/data/scenarios";
+import { SCENARIOS, getScenarioWithShuffledOptions } from "@/data/scenarios";
 import { speakInBrowser, stopSpeech } from "@/lib/speak";
 import { createClient } from "@/lib/supabase/browser-client";
 import { useSession } from "@/components/SessionSummary";
@@ -224,7 +224,10 @@ export default function ScenarioRunner({
   setLastAssistant: (q: string) => void;
   selectedChildId?: string | null;
 }) {
-  const scenario = SCENARIOS[scenarioKey];
+  const scenario = useMemo(
+    () => getScenarioWithShuffledOptions(scenarioKey),
+    [scenarioKey]
+  );
   const sb = useMemo(() => createClient(), []);
   const { meta, addTurn } = useSession();
 

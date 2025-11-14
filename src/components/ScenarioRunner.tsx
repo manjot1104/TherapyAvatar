@@ -280,7 +280,10 @@ export default function ScenarioRunner({
         .maybeSingle();
 
       if (data) {
-        const b = Math.max(0, Math.min(scenario.blocks.length - 1, data.current_block ?? 0));
+        const b = Math.max(
+          0,
+          Math.min(scenario.blocks.length - 1, data.current_block ?? 0)
+        );
         setBlockIdx(b);
         setTotalStars(Math.max(0, data.total_points ?? 0));
       } else {
@@ -295,8 +298,8 @@ export default function ScenarioRunner({
   useEffect(() => {
     setOptionStatuses(Array(q.options.length).fill("idle"));
     setLocked(false);
-    setVisibleCount(q.options.length); // ✅ show all by default
-    setShowOptions(true);              // ✅ options visible immediately
+    setVisibleCount(q.options.length); // show all options
+    setShowOptions(true);
   }, [blockIdx, qIdx, q.options.length]);
 
   /* Speak question + options in background (do NOT block UI) */
@@ -319,7 +322,7 @@ export default function ScenarioRunner({
         await speakInBrowser("Choose one.", { rate: 0.96 });
         if (ttsToken.current !== myToken) throw new Error("stale");
 
-        // Options one-by-one (spoken only, UI already visible)
+        // Options one-by-one
         for (let i = 0; i < q.options.length; i++) {
           if (ttsToken.current !== myToken) throw new Error("stale");
           const spoken = removeEmojiRough(q.options[i]).replace(/\s+/g, " ");
@@ -335,13 +338,11 @@ export default function ScenarioRunner({
     })();
 
     return () => {
-      // cancel further speech when question changes
       ++ttsToken.current;
       stopSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockIdx, qIdx, scenarioKey]);
-
 
   /* save (upsert) scenario_progress */
   const saveProgress = async (nextBlock: number, newTotal: number) => {
@@ -360,7 +361,7 @@ export default function ScenarioRunner({
   };
 
   /* audit block attempt */
-  const insertAttempt = async (
+  const insertBlockAttempt = async (
     blockIndex: number,
     stars: number,
     passed: boolean,
@@ -379,12 +380,22 @@ export default function ScenarioRunner({
     });
   };
 
-  /* per-question attempt */
-  const insertQuestionAttempt = async (
-    questionIndex: number,
-    optionIndex: number,
-    isCorrect: boolean
-  ) => {
+  /* per-question attempt (NOW also saves text) */
+  const insertQuestionAttempt = async ({
+    questionIndex,
+    optionIndex,
+    isCorrect,
+    questionText,
+    chosenText,
+    correctText,
+  }: {
+    questionIndex: number;
+    optionIndex: number;
+    isCorrect: boolean;
+    questionText: string;
+    chosenText: string;
+    correctText: string;
+  }) => {
     if (!ownerId) return;
     await sb.from("scenario_question_attempts").insert({
       owner_id: ownerId,
@@ -395,6 +406,10 @@ export default function ScenarioRunner({
       question_index: questionIndex,
       option_index: optionIndex,
       is_correct: isCorrect,
+      // NEW FIELDS
+      question_text: questionText,
+      chosen_option_text: chosenText,
+      correct_option_text: correctText,
     });
   };
 
@@ -403,27 +418,42 @@ export default function ScenarioRunner({
     if (locked) return;
     setLocked(true);
 
-    ++ttsToken.current; // stop further option speech
+    ++ttsToken.current;
     stopSpeech();
 
+    // Chat log
     addTurn({ speaker: "child", text: optText });
     if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
       persistTurn(meta.sessionId, { speaker: "child", text: optText }).catch(() => {});
     }
 
     const qNow = questions[qIdx];
-    const correct = optIndex === qNow.correctIndex;
+    const isCorrect = optIndex === qNow.correctIndex;
 
+    // Text snapshots (these are what we will show later on progress page)
+    const questionText = qNow.prompt;
+    const chosenText = qNow.options[optIndex] ?? optText;
+    const correctText = qNow.options[qNow.correctIndex];
+
+    // UI feedback
     setOptionStatuses((prev) =>
-      prev.map((s, i) => (i === optIndex ? (correct ? "correct" : "wrong") : s))
+      prev.map((s, i) => (i === optIndex ? (isCorrect ? "correct" : "wrong") : s))
     );
-    if (correct) setAnswersCorrect((c) => c + 1);
+    if (isCorrect) setAnswersCorrect((c) => c + 1);
 
-    insertQuestionAttempt(qIdx, optIndex, correct).catch(() => {});
+    // DB audit
+    insertQuestionAttempt({
+      questionIndex: qIdx,
+      optionIndex: optIndex,
+      isCorrect,
+      questionText,
+      chosenText,
+      correctText,
+    }).catch(() => {});
 
     try {
       await speakInBrowser(
-        correct ? "Good job!" : "Okay, let's try the next one.",
+        isCorrect ? "Good job!" : "Okay, let's try the next one.",
         { rate: 0.98 }
       );
     } catch {
@@ -432,25 +462,30 @@ export default function ScenarioRunner({
 
     await new Promise((r) => setTimeout(r, 350)); // dwell
 
+    // More questions in this block?
     if (qIdx < 2) {
       setQIdx((i) => i + 1);
       return;
     }
 
     // block finished
-    const stars = answersCorrect + (correct ? 1 : 0); // 0..3
+    const stars = answersCorrect + (isCorrect ? 1 : 0); // 0..3
     const passed = stars >= 2;
     const newTotal = totalStars + stars;
 
     if (passed && /^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
-      persistMastery(meta.sessionId, `${scenario.skillLabel} • ${block.title}`, "success").catch(
-        () => {}
-      );
+      persistMastery(
+        meta.sessionId,
+        `${scenario.skillLabel} • ${block.title}`,
+        "success"
+      ).catch(() => {});
     }
 
-    await insertAttempt(blockIdx, stars, passed, answersCorrect + (correct ? 1 : 0));
+    await insertBlockAttempt(blockIdx, stars, passed, answersCorrect + (isCorrect ? 1 : 0));
 
-    const nextBlock = passed ? Math.min(blockIdx + 1, scenario.blocks.length - 1) : blockIdx;
+    const nextBlock = passed
+      ? Math.min(blockIdx + 1, scenario.blocks.length - 1)
+      : blockIdx;
     await saveProgress(nextBlock, newTotal);
 
     setTotalStars(newTotal);

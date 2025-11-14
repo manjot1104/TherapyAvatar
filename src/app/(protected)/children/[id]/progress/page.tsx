@@ -36,6 +36,11 @@ type Attempt = {
   question_index: number;
   option_index: number;
   is_correct: boolean;
+
+  // NEW
+  question_text?: string | null;
+  chosen_option_text?: string | null;
+  correct_option_text?: string | null;
 };
 
 type BlockAttempt = {
@@ -57,10 +62,9 @@ export default async function ChildProgressPage(props: any) {
   } = await supabase.auth.getUser();
   if (!user) return <div className="p-6">Please sign in.</div>;
 
-  // ✅ Works for both sync and async params
   const childId = await resolveId(props?.params);
 
-  // ---- Load child (RLS scoped) ----
+  // ---- Load child ----
   const { data: child } = await supabase
     .from("children")
     .select("id, full_name, dob, created_at")
@@ -84,11 +88,23 @@ export default async function ChildProgressPage(props: any) {
     );
   }
 
-  // ---- Fetch attempts, block summaries, and points ----
+  // ---- Fetch attempts ----
   const { data: attemptsRaw } = await supabase
     .from("scenario_question_attempts")
     .select(
-      "session_id, created_at, scenario_key, block_index, question_index, option_index, is_correct"
+      [
+        "session_id",
+        "created_at",
+        "scenario_key",
+        "block_index",
+        "question_index",
+        "option_index",
+        "is_correct",
+        // NEW FIELDS
+        "question_text",
+        "chosen_option_text",
+        "correct_option_text",
+      ].join(",")
     )
     .eq("owner_id", user.id)
     .or(`child_id.eq.${childId},child_id.is.null`)
@@ -203,17 +219,39 @@ export default async function ChildProgressPage(props: any) {
           <div className="absolute inset-x-0 -top-px h-1 rounded-t-3xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
           <div className="p-6 sm:p-8 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <MetaItem icon={<CalendarDays className="h-4 w-4" />} label="Date of birth" value={child.dob ?? "—"} />
-              <MetaItem icon={<Clock className="h-4 w-4" />} label="Created" value={new Date(child.created_at).toLocaleString()} />
-              <MetaItem icon={<ListChecks className="h-4 w-4" />} label="Total answered" value={String(overallAnswered)} />
-              <MetaItem icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} label="Total correct" value={String(overallCorrect)} />
+              <MetaItem
+                icon={<CalendarDays className="h-4 w-4" />}
+                label="Date of birth"
+                value={child.dob ?? "—"}
+              />
+              <MetaItem
+                icon={<Clock className="h-4 w-4" />}
+                label="Created"
+                value={new Date(child.created_at).toLocaleString()}
+              />
+              <MetaItem
+                icon={<ListChecks className="h-4 w-4" />}
+                label="Total answered"
+                value={String(overallAnswered)}
+              />
+              <MetaItem
+                icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                label="Total correct"
+                value={String(overallCorrect)}
+              />
             </div>
 
             <div className="flex flex-wrap gap-3">
               <StatPill label="Total points (stars)" value={String(totalPoints)} />
-              <StatPill label="Sessions listed" value={String(orderedSessionKeys.filter((k) => k !== "ADHOC").length)} />
+              <StatPill
+                label="Sessions listed"
+                value={String(orderedSessionKeys.filter((k) => k !== "ADHOC").length)}
+              />
               {grouped.has("ADHOC") && (
-                <StatPill label="Ad-hoc attempts" value={String(grouped.get("ADHOC")!.length)} />
+                <StatPill
+                  label="Ad-hoc attempts"
+                  value={String(grouped.get("ADHOC")!.length)}
+                />
               )}
             </div>
           </div>
@@ -246,7 +284,9 @@ export default async function ChildProgressPage(props: any) {
                   sessionId={sid === "ADHOC" ? null : sid}
                   createdAt={sid === "ADHOC" ? null : sessionMeta.get(sid)?.created_at ?? null}
                   attempts={grouped.get(sid) ?? []}
-                  blockAgg={blockBySession.get(sid) ?? { totalStars: 0, totalCorrect: 0, blocks: [] }}
+                  blockAgg={
+                    blockBySession.get(sid) ?? { totalStars: 0, totalCorrect: 0, blocks: [] }
+                  }
                 />
               ))}
             </div>
@@ -271,7 +311,7 @@ function SessionCard({
   blockAgg: { totalStars: number; totalCorrect: number; blocks: BlockAttempt[] };
 }) {
   const answered = attempts.length;
-  const correct = attempts.filter((a) => a.is_correct).length;
+  const correctStored = attempts.filter((a) => a.is_correct).length;
 
   return (
     <div className="px-6 py-5">
@@ -291,9 +331,21 @@ function SessionCard({
         </div>
 
         <div className="flex items-center gap-2">
-          <Pill icon={<ListChecks className="h-3.5 w-3.5" />} label="Answered" value={String(answered)} />
-          <Pill icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />} label="Correct" value={String(correct)} />
-          <Pill icon={<Star className="h-3.5 w-3.5 text-amber-500" />} label="Stars" value={String(blockAgg.totalStars)} />
+          <Pill
+            icon={<ListChecks className="h-3.5 w-3.5" />}
+            label="Answered"
+            value={String(answered)}
+          />
+          <Pill
+            icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
+            label="Correct"
+            value={String(correctStored)}
+          />
+          <Pill
+            icon={<Star className="h-3.5 w-3.5 text-amber-500" />}
+            label="Stars"
+            value={String(blockAgg.totalStars)}
+          />
         </div>
       </div>
 
@@ -314,6 +366,16 @@ function SessionCard({
           <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60 bg-white/70 dark:bg-zinc-950/40">
             {attempts.map((a, i) => {
               const meta = resolveQMeta(a);
+
+              const questionText = a.question_text ?? meta.prompt;
+              const yourAnswer = a.chosen_option_text ?? meta.chosenOption;
+              const correctAnswer = a.correct_option_text ?? meta.correctOption;
+
+              const effectiveIsCorrect =
+                yourAnswer && correctAnswer
+                  ? yourAnswer === correctAnswer
+                  : a.is_correct;
+
               return (
                 <tr key={i} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/30">
                   <Td>{new Date(a.created_at).toLocaleTimeString()}</Td>
@@ -321,16 +383,16 @@ function SessionCard({
                   <Td>{a.block_index + 1}</Td>
                   <Td>{a.question_index + 1}</Td>
                   <Td className="max-w-[340px]">
-                    <span className="line-clamp-2">{meta.prompt}</span>
+                    <span className="line-clamp-2">{questionText}</span>
                   </Td>
                   <Td className="max-w-[260px]">
-                    <span className="line-clamp-2">{meta.chosenOption}</span>
+                    <span className="line-clamp-2">{yourAnswer}</span>
                   </Td>
                   <Td className="max-w-[260px]">
-                    <span className="line-clamp-2">{meta.correctOption}</span>
+                    <span className="line-clamp-2">{correctAnswer}</span>
                   </Td>
                   <Td>
-                    {a.is_correct ? (
+                    {effectiveIsCorrect ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/70 text-emerald-800 px-2 py-0.5 text-xs dark:bg-emerald-900/30 dark:text-emerald-200">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Correct
@@ -458,7 +520,9 @@ function resolveQMeta(a: Attempt): {
   const scenarioTitle = sc.title ?? String(a.scenario_key);
   const block = sc.blocks?.[a.block_index];
   const q = block?.questions?.[a.question_index];
-  const chosenOption = q?.options?.[a.option_index] ?? `Option #${a.option_index + 1}`;
+
+  const chosenOption =
+    q?.options?.[a.option_index] ?? `Option #${a.option_index + 1}`;
   const correctOption =
     q?.options?.[q?.correctIndex ?? -1] ?? (q ? "—" : "Unknown");
   const prompt = q?.prompt ?? `Q${a.question_index + 1}`;

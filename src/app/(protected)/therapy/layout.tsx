@@ -12,9 +12,9 @@ import { SessionProvider } from "@/components/SessionSummary";
 
 const NAV = [
   { href: "/app/therapy", label: "Main" },
-  { href: "/app/therapy/therapist", label: "Therapist" },
-  { href: "/app/therapy/engagement", label: "Engagement" },
-  { href: "/app/therapy/summary", label: "Summary" },
+  // { href: "/app/therapy/therapist", label: "Therapist" },
+  // { href: "/app/therapy/engagement", label: "Engagement" },
+  // { href: "/app/therapy/summary", label: "Summary" },
 ];
 
 export default function TherapyLayout({ children }: { children: React.ReactNode }) {

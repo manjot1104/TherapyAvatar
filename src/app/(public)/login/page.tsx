@@ -1,9 +1,11 @@
 // app/(public)/login/page.tsx
 "use client";
+
 import React, { useEffect, useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/browser-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react";
+import { signup } from "@/lib/api"; // 🔹 backend (Render) signup helper
 
 function LoginInner() {
   const supabase = createClient();
@@ -91,10 +93,30 @@ function LoginInner() {
     e.preventDefault();
     setLoading(true);
     setErr(null);
-    const { error } = await supabase.auth.signUp({ email, password });
-    setLoading(false);
-    if (error) setErr(error.message);
-    else setMode("password"); // account created → sign in with password
+
+    try {
+      // 1) Supabase auth me account create karo
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+
+      // 2) Render backend pe bhi signup info bhejo (optional, but yahi hamara API_BASE wala flow hai)
+      try {
+        await signup({
+          email,
+          userId: data.user?.id, // agar backend ko chahiye to
+        });
+      } catch (backendErr) {
+        console.warn("Backend signup (Render) failed:", backendErr);
+        // yahan chahe to UI error mat dikhao, sirf console me rakh sakte ho
+      }
+
+      // 3) Account bana, ab password se sign in mode pe le jao
+      setMode("password");
+    } catch (error: any) {
+      setErr(error.message || "Signup failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function signInWithGoogle() {
@@ -150,7 +172,11 @@ function LoginInner() {
                         : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
                     ].join(" ")}
                   >
-                    {m === "otp" ? "Email OTP" : m === "password" ? "Sign In" : "Sign up"}
+                    {m === "otp"
+                      ? "Email OTP"
+                      : m === "password"
+                      ? "Sign In"
+                      : "Sign up"}
                   </button>
                 );
               })}
@@ -188,7 +214,10 @@ function LoginInner() {
 
                     <Divider text="or continue with" />
 
-                    <OAuthButton onClick={signInWithGoogle} provider="Google" />
+                    <OAuthButton
+                      onClick={signInWithGoogle}
+                      provider="Google"
+                    />
                     <p className="text-xs text-zinc-500">
                       We’ll email you a secure link. No password needed.
                     </p>
@@ -240,9 +269,15 @@ function LoginInner() {
                         type="button"
                         onClick={() => setShowPwd((s) => !s)}
                         className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                        aria-label={showPwd ? "Hide password" : "Show password"}
+                        aria-label={
+                          showPwd ? "Hide password" : "Show password"
+                        }
                       >
-                        {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPwd ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     }
                   />
@@ -251,7 +286,10 @@ function LoginInner() {
                   </PrimaryButton>
 
                   <Divider text="or continue with" />
-                  <OAuthButton onClick={signInWithGoogle} provider="Google" />
+                  <OAuthButton
+                    onClick={signInWithGoogle}
+                    provider="Google"
+                  />
 
                   <p className="text-xs text-zinc-500">
                     New here?{" "}
@@ -290,9 +328,15 @@ function LoginInner() {
                         type="button"
                         onClick={() => setShowPwd((s) => !s)}
                         className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                        aria-label={showPwd ? "Hide password" : "Show password"}
+                        aria-label={
+                          showPwd ? "Hide password" : "Show password"
+                        }
                       >
-                        {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPwd ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     }
                   />
@@ -301,7 +345,10 @@ function LoginInner() {
                   </PrimaryButton>
 
                   <Divider text="or sign up with" />
-                  <OAuthButton onClick={signInWithGoogle} provider="Google" />
+                  <OAuthButton
+                    onClick={signInWithGoogle}
+                    provider="Google"
+                  />
 
                   <p className="text-xs text-zinc-500">
                     By continuing, you agree to our Terms & Privacy Policy.
@@ -418,9 +465,10 @@ function Divider({ text }: { text?: string }) {
     <div className="flex items-center gap-3">
       <span className="h-[1px] w-full bg-zinc-200 dark:bg-zinc-800" />
       {text && (
-        <span className="text-xs text-zinc-500 whitespace-nowrap">{text}</span>
+        <span className="text-xs text-zinc-500 whitespace-nowrap">
+          {text}
+        </span>
       )}
-      <span className="h-[1px] w-full bg-zinc-200 dark:bg-zinc-800" />
       <span className="h-[1px] w-full bg-zinc-200 dark:bg-zinc-800" />
     </div>
   );

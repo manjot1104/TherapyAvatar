@@ -1,12 +1,47 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+// src/utils/api.ts (ya jahan bhi yeh file hai)
 
-export async function respond(text: string, kbHint?: string, module?: string) {
+// 🔹 Backend ka base URL – Vercel + local dono me env se aayega
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+
+if (!API_BASE) {
+  // Dev me help karega agar env bhool gaye ho
+  console.warn("⚠️ NEXT_PUBLIC_API_URL is not set. API calls will fail.");
+}
+
+// Small helper to avoid repeat
+async function request<T>(path: string, options: RequestInit): Promise<T> {
   if (!API_BASE) throw new Error("API base URL is not set");
-  const r = await fetch(`${API_BASE}/respond`, {
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error(`❌ API ${path} failed:`, res.status, text);
+    throw new Error(`Request to ${path} failed`);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+/* ---------------- respond ---------------- */
+export async function respond(text: string, kbHint?: string, module?: string) {
+  return request<{ text: string; speakClient: boolean }>("/respond", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, kbHint, module }),
   });
-  if (!r.ok) throw new Error("respond failed");
-  return r.json() as Promise<{ text: string; speakClient: boolean }>;
+}
+
+/* ---------------- signup ---------------- */
+export async function signup(payload: any) {
+  // payload: { email, password, ... } jo bhi tum backend expect karte ho
+  return request<any>("/signup", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

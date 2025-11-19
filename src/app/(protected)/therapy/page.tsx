@@ -6,10 +6,13 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { RotateCw, Pause, Play } from "lucide-react";
 import { useSession } from "@/components/SessionSummary";
 import { createClient } from "@/lib/supabase/browser-client";
 import ScenarioRunner from "@/components/ScenarioRunner";
 import { SCENARIOS } from "@/data/scenarios";
+import { speakInBrowser, stopSpeech } from "@/lib/speak";
 
 const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), { ssr: false });
 const EmotionTracker = dynamic(() => import("@/components/EmotionTracker"), { ssr: false });
@@ -17,10 +20,18 @@ const AudioRecorder = dynamic(() => import("@/components/AudioRecorder"), { ssr:
 
 export default function TherapyMainPage() {
   const { addTurn, meta, setMeta } = useSession();
-  const [lastAssistant, setLastAssistant] = useState("");
+
+  // Caption bar (sirf question / assistant reply)
+  const [captionText, setCaptionText] = useState("");
+
+  // TTS script (question + options) – repeat/play isi pe chalega
+  const [spokenScript, setSpokenScript] = useState("");
+
   const [processing, setProcessing] = useState(false);
   const [activeScenario, setActiveScenario] =
     useState<keyof typeof SCENARIOS>("greeting_teacher");
+
+  const [isPaused, setIsPaused] = useState(false);
 
   const selectedChildId: string | null = null;
 
@@ -43,6 +54,32 @@ export default function TherapyMainPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* ======= CONTROL HANDLERS ======= */
+
+  // Repeat = stop + full script dubara bolo
+  const handleRepeat = () => {
+    if (!spokenScript) return;
+    stopSpeech();
+    speakInBrowser(spokenScript);
+    setIsPaused(false);
+  };
+
+  // Pause = sirf stopSpeech; Play = poora shuru se
+  const handlePlayPauseToggle = () => {
+    if (!spokenScript) return;
+
+    if (!isPaused) {
+      // pause
+      stopSpeech();
+      setIsPaused(true);
+    } else {
+      // play from start
+      stopSpeech();
+      speakInBrowser(spokenScript);
+      setIsPaused(false);
+    }
+  };
 
   return (
     <section className="grid gap-4">
@@ -70,10 +107,11 @@ export default function TherapyMainPage() {
             {/* Subtle gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40 pointer-events-none" />
 
-            {/* ===== Floating options (clouds) ===== */}
+            {/* ===== Floating options (clouds) + Scenario logic ===== */}
             <ScenarioRunner
               scenarioKey={activeScenario}
-              setLastAssistant={setLastAssistant}
+              setCaption={setCaptionText}             // 👈 question
+              setSpokenScript={setSpokenScript}       // 👈 question + options
               selectedChildId={selectedChildId || undefined}
             />
 
@@ -99,34 +137,73 @@ export default function TherapyMainPage() {
               </div>
             </div>
 
-            {/* ===== Mic bubble (bottom center, safe-area aware) ===== */}
+            {/* ===== Mic + Therapist controls (bottom center, safe-area aware) ===== */}
             <div
               className="absolute inset-x-0 z-20 pointer-events-none"
               style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
             >
               <div className="flex justify-center">
                 <div className="pointer-events-auto">
-                  <Suspense fallback={null}>
-                    <AudioRecorder
-                      onUserTranscript={(t) =>
-                        addTurn({ speaker: "child", text: t })
-                      }
-                      onAssistant={(reply) => {
-                        setLastAssistant(reply);
-                        addTurn({ speaker: "assistant", text: reply });
-                      }}
-                      onProcessingChange={(v) => setProcessing(v)}
-                    />
-                  </Suspense>
+                  <div className="flex items-center justify-center gap-3 px-3">
+                    {/* LEFT ICONS (Repeat) */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="rounded-full bg-background/80 backdrop-blur border-border/80 shadow-sm"
+                        onClick={handleRepeat}
+                        disabled={processing || !spokenScript}
+                        aria-label="Repeat last script"
+                      >
+                        <RotateCw className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    {/* MIC BUTTON */}
+                    <Suspense fallback={null}>
+                      <AudioRecorder
+                        onUserTranscript={(t) =>
+                          addTurn({ speaker: "child", text: t })
+                        }
+                        onAssistant={(reply) => {
+                          // Agar AI se reply aata hai to caption mein dikh jaaye
+                          setCaptionText(reply);
+                          addTurn({ speaker: "assistant", text: reply });
+                          setIsPaused(false);
+                        }}
+                        onProcessingChange={(v) => setProcessing(v)}
+                      />
+                    </Suspense>
+
+                    {/* RIGHT ICONS (Play/Pause) */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="rounded-full bg-background/80 backdrop-blur border-border/80 shadow-sm"
+                        onClick={handlePlayPauseToggle}
+                        disabled={processing || !spokenScript}
+                        aria-label={isPaused ? "Play / Restart" : "Pause"}
+                      >
+                        {isPaused ? (
+                          <Play className="w-4 h-4" />
+                        ) : (
+                          <Pause className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Caption bar */}
+          {/* Caption bar – sirf question / reply */}
           <div className="px-3 md:px-4 py-3">
             <div className="rounded-xl bg-primary/10 dark:bg-primary/20 text-primary px-3 py-2 text-center border border-border">
-              {lastAssistant || "Let's begin our fun activity!"}
+              {captionText || "Let's begin our fun activity!"}
             </div>
           </div>
         </CardContent>
@@ -142,7 +219,11 @@ export default function TherapyMainPage() {
           ).map((key) => (
             <button
               key={key}
-              onClick={() => setActiveScenario(key)}
+              onClick={() => {
+                stopSpeech();
+                setIsPaused(false);
+                setActiveScenario(key);
+              }}
               className={[
                 "px-3 py-1.5 rounded-lg text-sm border transition",
                 activeScenario === key

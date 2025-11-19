@@ -1,7 +1,7 @@
 // src/components/ScenarioRunner.tsx
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
@@ -52,7 +52,9 @@ function CloudPill({
   const idleCls =
     "bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white border-white/60 dark:border-slate-700";
   const okCls = "bg-green-500/90 text-white border-green-600";
-  const badCls = "bg-red-500/90 text-white border-red-600";
+  const badCls = "bg-red-500/90 text-white border-green-600";
+
+  const badRealCls = "bg-red-500/90 text-white border-red-600";
 
   return (
     <button
@@ -61,7 +63,7 @@ function CloudPill({
       className={[
         base,
         "transition-colors duration-300",
-        isCorrect ? okCls : isWrong ? badCls : idleCls,
+        isCorrect ? okCls : isWrong ? badRealCls : idleCls,
         disabled ? "opacity-95 cursor-not-allowed" : "",
       ].join(" ")}
     >
@@ -217,11 +219,13 @@ function CloudsOverlay({
 -------------------------------------------- */
 export default function ScenarioRunner({
   scenarioKey,
-  setLastAssistant,
+  setCaption,
+  setSpokenScript,
   selectedChildId,
 }: {
   scenarioKey: keyof typeof SCENARIOS;
-  setLastAssistant: (q: string) => void;
+  setCaption: (q: string) => void;
+  setSpokenScript: (s: string) => void;
   selectedChildId?: string | null;
 }) {
   const scenario = useMemo(
@@ -235,18 +239,17 @@ export default function ScenarioRunner({
   const [childId, setChildId] = useState<string | null>(selectedChildId ?? null);
 
   const [blockIdx, setBlockIdx] = useState(0);
+  const [maxBlockIdx, setMaxBlockIdx] = useState(0);
   const [qIdx, setQIdx] = useState(0);
   const [answersCorrect, setAnswersCorrect] = useState(0);
   const [totalStars, setTotalStars] = useState(0);
 
   const [showOptions, setShowOptions] = useState(false);
-  const speaking = useRef(false);
 
   // UI feedback + progressive reveal
   const [optionStatuses, setOptionStatuses] = useState<OptionStatus[]>([]);
   const [locked, setLocked] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
-  const ttsToken = useRef(0);
 
   const block = scenario.blocks[blockIdx];
   const questions = block.questions.slice(0, 3);
@@ -267,28 +270,51 @@ export default function ScenarioRunner({
     if (selectedChildId !== undefined) setChildId(selectedChildId ?? null);
   }, [selectedChildId]);
 
-  /* resume progress */
+  /* ✅ resume progress: highest PASSED block from scenario_block_attempts */
   useEffect(() => {
     (async () => {
       if (!ownerId) return;
-      const { data } = await sb
-        .from("scenario_progress")
-        .select("current_block,total_points")
+
+      const { data, error } = await sb
+        .from("scenario_block_attempts")
+        .select("block_index, passed")
         .eq("owner_id", ownerId)
         .eq("scenario_key", scenarioKey)
         .or(childId ? `child_id.eq.${childId}` : `child_id.is.null`)
-        .maybeSingle();
+        .order("block_index", { ascending: false })
+        .limit(20);
 
-      if (data) {
-        const b = Math.max(
-          0,
-          Math.min(scenario.blocks.length - 1, data.current_block ?? 0)
-        );
-        setBlockIdx(b);
-        setTotalStars(Math.max(0, data.total_points ?? 0));
-      } else {
+      if (error) {
+        console.warn("resume error scenario_block_attempts:", error);
+        return;
+      }
+
+      if (!data || data.length === 0) {
         setBlockIdx(0);
+        setMaxBlockIdx(0);
         setTotalStars(0);
+        return;
+      }
+
+      // highest block jahan passed = true
+      let highestPassed = -1;
+      for (const row of data) {
+        if (row.passed) {
+          highestPassed = Math.max(highestPassed, row.block_index ?? 0);
+        }
+      }
+
+      if (highestPassed >= 0) {
+        const startBlock = Math.min(
+          highestPassed + 1,
+          scenario.blocks.length - 1
+        );
+        setBlockIdx(startBlock);
+        setMaxBlockIdx(startBlock);
+      } else {
+        // koi pass nahi mila → Block 1 se
+        setBlockIdx(0);
+        setMaxBlockIdx(0);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -302,57 +328,45 @@ export default function ScenarioRunner({
     setShowOptions(true);
   }, [blockIdx, qIdx, q.options.length]);
 
-  /* Speak question + options in background (do NOT block UI) */
+  /* Speak FULL script: question + options */
   useEffect(() => {
     const prompt = q.prompt;
-    setLastAssistant(prompt);
+    const optionTexts = q.options.map((opt) => removeEmojiRough(opt));
 
-    const myToken = ++ttsToken.current;
+    setCaption(prompt);
 
+    const fullScript =
+      optionTexts.length > 0
+        ? `${prompt}. ${optionTexts.join(". ")}`
+        : prompt;
+
+    setSpokenScript(fullScript);
+
+    stopSpeech();
     (async () => {
       try {
-        if (speaking.current) return;
-        speaking.current = true;
-
-        // Question
-        await speakInBrowser(prompt, { rate: 0.96 });
-        if (ttsToken.current !== myToken) throw new Error("stale");
-
-        // Small cue
-        await speakInBrowser("Choose one.", { rate: 0.96 });
-        if (ttsToken.current !== myToken) throw new Error("stale");
-
-        // Options one-by-one
-        for (let i = 0; i < q.options.length; i++) {
-          if (ttsToken.current !== myToken) throw new Error("stale");
-          const spoken = removeEmojiRough(q.options[i]).replace(/\s+/g, " ");
-          await speakInBrowser(spoken, { rate: 0.96 });
-          if (ttsToken.current !== myToken) throw new Error("stale");
-          await new Promise((r) => setTimeout(r, 60));
-        }
+        await speakInBrowser(fullScript, { rate: 0.96 });
       } catch {
-        // ignore stale / iOS block
-      } finally {
-        speaking.current = false;
+        // ignore
       }
     })();
 
     return () => {
-      ++ttsToken.current;
       stopSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockIdx, qIdx, scenarioKey]);
 
-  /* save (upsert) scenario_progress */
-  const saveProgress = async (nextBlock: number, newTotal: number) => {
+  /* save (upsert) scenario_progress - highest block only */
+  const saveProgress = async (highestBlock: number, newTotal: number) => {
     if (!ownerId) return;
+
     await sb.from("scenario_progress").upsert(
       {
         owner_id: ownerId,
         child_id: childId ?? null,
         scenario_key: scenarioKey,
-        current_block: nextBlock,
+        current_block: highestBlock,
         total_points: newTotal,
         updated_at: new Date().toISOString(),
       },
@@ -380,7 +394,7 @@ export default function ScenarioRunner({
     });
   };
 
-  /* per-question attempt (NOW also saves text) */
+  /* per-question attempt */
   const insertQuestionAttempt = async ({
     questionIndex,
     optionIndex,
@@ -406,7 +420,6 @@ export default function ScenarioRunner({
       question_index: questionIndex,
       option_index: optionIndex,
       is_correct: isCorrect,
-      // NEW FIELDS
       question_text: questionText,
       chosen_option_text: chosenText,
       correct_option_text: correctText,
@@ -418,7 +431,6 @@ export default function ScenarioRunner({
     if (locked) return;
     setLocked(true);
 
-    ++ttsToken.current;
     stopSpeech();
 
     // Chat log
@@ -430,18 +442,15 @@ export default function ScenarioRunner({
     const qNow = questions[qIdx];
     const isCorrect = optIndex === qNow.correctIndex;
 
-    // Text snapshots (these are what we will show later on progress page)
     const questionText = qNow.prompt;
     const chosenText = qNow.options[optIndex] ?? optText;
     const correctText = qNow.options[qNow.correctIndex];
 
-    // UI feedback
     setOptionStatuses((prev) =>
       prev.map((s, i) => (i === optIndex ? (isCorrect ? "correct" : "wrong") : s))
     );
     if (isCorrect) setAnswersCorrect((c) => c + 1);
 
-    // DB audit
     insertQuestionAttempt({
       questionIndex: qIdx,
       optionIndex: optIndex,
@@ -456,11 +465,9 @@ export default function ScenarioRunner({
         isCorrect ? "Good job!" : "Okay, let's try the next one.",
         { rate: 0.98 }
       );
-    } catch {
-      // ignore
-    }
+    } catch {}
 
-    await new Promise((r) => setTimeout(r, 350)); // dwell
+    await new Promise((r) => setTimeout(r, 350));
 
     // More questions in this block?
     if (qIdx < 2) {
@@ -468,7 +475,7 @@ export default function ScenarioRunner({
       return;
     }
 
-    // block finished
+    // Block finished
     const stars = answersCorrect + (isCorrect ? 1 : 0); // 0..3
     const passed = stars >= 2;
     const newTotal = totalStars + stars;
@@ -481,17 +488,41 @@ export default function ScenarioRunner({
       ).catch(() => {});
     }
 
-    await insertBlockAttempt(blockIdx, stars, passed, answersCorrect + (isCorrect ? 1 : 0));
+    await insertBlockAttempt(
+      blockIdx,
+      stars,
+      passed,
+      answersCorrect + (isCorrect ? 1 : 0)
+    );
 
-    const nextBlock = passed
+    // Next block UI ke liye
+    const rawNext = passed
       ? Math.min(blockIdx + 1, scenario.blocks.length - 1)
       : blockIdx;
-    await saveProgress(nextBlock, newTotal);
 
+    // Max block (kabhi peeche nahi)
+    const newMaxBlock = Math.max(maxBlockIdx, rawNext);
+
+    await saveProgress(newMaxBlock, newTotal);
+
+    setMaxBlockIdx(newMaxBlock);
     setTotalStars(newTotal);
     setAnswersCorrect(0);
     setQIdx(0);
-    setBlockIdx(nextBlock);
+    setBlockIdx(rawNext);
+  };
+
+  const handleReset = () => {
+    setBlockIdx(0);
+    setMaxBlockIdx(0);
+    setQIdx(0);
+    setTotalStars(0);
+    setAnswersCorrect(0);
+    setOptionStatuses([]);
+    setLocked(false);
+    setVisibleCount(0);
+    stopSpeech();
+    saveProgress(0, 0);
   };
 
   return (
@@ -511,18 +542,7 @@ export default function ScenarioRunner({
           size="sm"
           variant="outline"
           className="h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
-          onClick={() => {
-            setBlockIdx(0);
-            setQIdx(0);
-            setTotalStars(0);
-            setAnswersCorrect(0);
-            setOptionStatuses([]);
-            setLocked(false);
-            setVisibleCount(0);
-            ++ttsToken.current;
-            stopSpeech();
-            saveProgress(0, 0);
-          }}
+          onClick={handleReset}
         >
           Reset
         </Button>

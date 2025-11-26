@@ -426,7 +426,7 @@ export default function ScenarioRunner({
 
       try {
         // slow question
-        await speakInBrowser(prompt, { rate: 0.75 });
+        await speakInBrowser(prompt, { rate: 0.60 });
       } catch {}
 
       if (cancelled) return;
@@ -441,7 +441,7 @@ export default function ScenarioRunner({
 
         try {
           // slow options
-          await speakInBrowser(optionTexts[i], { rate: 0.75 });
+          await speakInBrowser(optionTexts[i], { rate: 0.70 });
         } catch {}
 
         if (cancelled) break;

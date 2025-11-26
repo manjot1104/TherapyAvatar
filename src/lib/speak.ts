@@ -126,7 +126,7 @@ function avatarTalkStart() {
   // If your avatar has any of these APIs, they'll be triggered:
   if (typeof A.setTalking === "function") A.setTalking(true);
   if (typeof A.setGesture === "function") A.setGesture("talk");
-  // if (typeof A.playGesture === "function") A.playGesture("talk"); // Commented out to stop hand movements
+  if (typeof A.playGesture === "function") A.playGesture("talk");
 }
 
 function avatarTalkStop() {

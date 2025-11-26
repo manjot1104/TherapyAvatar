@@ -298,6 +298,14 @@ function AvatarModel({
   const timeRef = useRef(0);
   const talkFactorRef = useRef(0); // 0 = idle, 1 = full talking
 
+  // For natural movements: add randomness and varied patterns
+  const idleOffsetRef = useRef({
+    armPhase: Math.random() * Math.PI * 2,
+    fingerPhase: Math.random() * Math.PI * 2,
+    gestureTimer: 0,
+    lastGesture: 0,
+  });
+
   useEffect(() => {
     if (root.current) {
       root.current.rotation.set(PITCH_UP, 0, 0);
@@ -345,46 +353,53 @@ function AvatarModel({
       lHand: bLH,
     } = baseRotRef.current;
 
-    // ------- Right arm: main expressive (small but visible) -------
-    if (rUpper && bRU) {
-      const bend = deg(8) * Math.sin(t * 1.4);      // x bend
-      const sway = deg(4) * Math.sin(t * 0.9);      // z sway
-      rUpper.rotation.x = bRU.x + f * bend;
-      rUpper.rotation.y = bRU.y;
-      rUpper.rotation.z = bRU.z + f * sway;
-    }
-    if (rLower && bRL) {
-      const bend = deg(10) * Math.sin(t * 1.6 + 0.4);
-      rLower.rotation.x = bRL.x + f * bend;
-      rLower.rotation.y = bRL.y;
-      rLower.rotation.z = bRL.z;
-    }
-    if (rHand && bRH) {
-      const twist = deg(6) * Math.sin(t * 1.8 + 0.8);
-      rHand.rotation.x = bRH.x;
-      rHand.rotation.y = bRH.y;
-      rHand.rotation.z = bRH.z + f * twist;
+    // ------- Natural arm movements: varied, subtle, with idle fidgets -------
+    const idleFactor = 1 - f; // More movement when idle
+
+    // Update idle timers
+    idleOffsetRef.current.gestureTimer += dt;
+    if (idleOffsetRef.current.gestureTimer - idleOffsetRef.current.lastGesture > 3 + Math.random() * 5) {
+      idleOffsetRef.current.lastGesture = idleOffsetRef.current.gestureTimer;
+      idleOffsetRef.current.armPhase = Math.random() * Math.PI * 2;
+      idleOffsetRef.current.fingerPhase = Math.random() * Math.PI * 2;
     }
 
-    // ------- Left arm: softer mirror -------
+    // Right arm: very subtle, natural micro-movements
+    if (rUpper && bRU) {
+      const microBend = deg(0.5 + Math.sin(t * 0.4 + idleOffsetRef.current.armPhase) * 0.8);
+      const talkBend = deg(1.5 + Math.sin(t * 0.8) * 1.2) * f;
+      const idleSway = deg(Math.sin(t * 0.3 + idleOffsetRef.current.armPhase * 0.5) * 0.6) * idleFactor;
+      rUpper.rotation.x = bRU.x + microBend + talkBend;
+      rUpper.rotation.z = bRU.z + idleSway;
+    }
+    if (rLower && bRL) {
+      const microBend = deg(0.3 + Math.sin(t * 0.5 + idleOffsetRef.current.armPhase + 0.5) * 0.5);
+      const talkBend = deg(2 + Math.sin(t * 0.9 + 0.3) * 0.8) * f;
+      rLower.rotation.x = bRL.x + microBend + talkBend;
+    }
+    if (rHand && bRH) {
+      const microTwist = deg(Math.sin(t * 0.35 + idleOffsetRef.current.armPhase * 0.8) * 0.4) * idleFactor;
+      const talkTwist = deg(1.2 + Math.sin(t * 1.0 + 0.8) * 0.6) * f;
+      rHand.rotation.z = bRH.z + microTwist + talkTwist;
+    }
+
+    // Left arm: even subtler, complementary movements
     if (lUpper && bLU) {
-      const bend = deg(5) * Math.sin(t * 1.3 + 1.0);
-      const sway = deg(3) * Math.sin(t * 0.8 + 0.6);
-      lUpper.rotation.x = bLU.x + f * bend;
-      lUpper.rotation.y = bLU.y;
-      lUpper.rotation.z = bLU.z + f * sway;
+      const microBend = deg(0.4 + Math.sin(t * 0.45 + idleOffsetRef.current.armPhase + Math.PI * 0.3) * 0.6);
+      const talkBend = deg(1.2 + Math.sin(t * 0.7 + 0.7) * 1.0) * f;
+      const idleSway = deg(Math.sin(t * 0.25 + idleOffsetRef.current.armPhase * 0.6) * 0.5) * idleFactor;
+      lUpper.rotation.x = bLU.x + microBend + talkBend;
+      lUpper.rotation.z = bLU.z + idleSway;
     }
     if (lLower && bLL) {
-      const bend = deg(7) * Math.sin(t * 1.5 + 1.4);
-      lLower.rotation.x = bLL.x + f * bend;
-      lLower.rotation.y = bLL.y;
-      lLower.rotation.z = bLL.z;
+      const microBend = deg(0.2 + Math.sin(t * 0.55 + idleOffsetRef.current.armPhase + 1.2) * 0.4);
+      const talkBend = deg(1.8 + Math.sin(t * 0.85 + 1.1) * 0.7) * f;
+      lLower.rotation.x = bLL.x + microBend + talkBend;
     }
     if (lHand && bLH) {
-      const twist = deg(4) * Math.sin(t * 1.7 + 1.7);
-      lHand.rotation.x = bLH.x;
-      lHand.rotation.y = bLH.y;
-      lHand.rotation.z = bLH.z + f * twist;
+      const microTwist = deg(Math.sin(t * 0.4 + idleOffsetRef.current.armPhase * 0.7) * 0.3) * idleFactor;
+      const talkTwist = deg(1.0 + Math.sin(t * 0.95 + 1.5) * 0.5) * f;
+      lHand.rotation.z = bLH.z + microTwist + talkTwist;
     }
 
     // ------- Fingers: subtle curl / relax -------

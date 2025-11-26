@@ -45,6 +45,98 @@ async function waitForAvatar(timeoutMs = 4000): Promise<any> {
   });
 }
 
+/* ========= Avatar helpers (expressions + gestures) ========= */
+
+type Mood = "neutral" | "happy" | "sad" | "angry" | "excited";
+
+function getAvatar(): any | null {
+  if (!isBrowser()) return null;
+  return (window as any).__AVATAR__ || null;
+}
+
+/**
+ * Try to set avatar mood using:
+ * 1) A.setMood(mood, phase) if provided
+ * 2) A.setExpression(mood, value) if provided
+ * 3) Fallback: use setWeight + _has with common VRM/preset keys
+ */
+function setAvatarMood(mood: Mood, phase: "pre" | "during" | "after" = "during") {
+  const A = getAvatar();
+  if (!A) return;
+
+  // If avatar has its own mood handler, prefer that.
+  if (typeof A.setMood === "function") {
+    A.setMood(mood, phase);
+    return;
+  }
+
+  // If avatar exposes a generic expression API
+  if (typeof A.setExpression === "function") {
+    A.setExpression(mood, phase === "after" ? 0 : 1);
+    return;
+  }
+
+  // Fallback: blendshape weights via setWeight + _has
+  if (typeof A.setWeight !== "function") return;
+
+  const has = (key: string) => Boolean(A._has?.(key));
+
+  const moodKeys: Record<Mood, string[]> = {
+    neutral: [],
+    happy: ["happy", "Joy", "joy", "Fun", "smile", "mouthSmile"],
+    sad: ["sad", "Sorrow", "sorrow", "frown"],
+    angry: ["angry", "Angry"],
+    excited: ["Fun", "joy", "happy"],
+  };
+
+  const allExprKeys = [
+    "happy",
+    "Joy",
+    "joy",
+    "Fun",
+    "smile",
+    "mouthSmile",
+    "sad",
+    "Sorrow",
+    "sorrow",
+    "frown",
+    "angry",
+    "Angry",
+  ];
+
+  // Reset all to 0
+  for (const k of allExprKeys) {
+    if (has(k)) A.setWeight(k, 0);
+  }
+
+  if (mood === "neutral" || phase === "after") {
+    return;
+  }
+
+  const candidates = moodKeys[mood];
+  const key = candidates.find(has);
+  if (key) {
+    A.setWeight(key, 0.9);
+  }
+}
+
+function avatarTalkStart() {
+  const A = getAvatar();
+  if (!A) return;
+  // If your avatar has any of these APIs, they'll be triggered:
+  if (typeof A.setTalking === "function") A.setTalking(true);
+  if (typeof A.setGesture === "function") A.setGesture("talk");
+  if (typeof A.playGesture === "function") A.playGesture("talk");
+}
+
+function avatarTalkStop() {
+  const A = getAvatar();
+  if (!A) return;
+  if (typeof A.setTalking === "function") A.setTalking(false);
+  if (typeof A.setGesture === "function") A.setGesture("idle");
+  if (typeof A.playGesture === "function") A.playGesture("idle");
+}
+
 /* ========= iOS unlock logic ========= */
 
 let unlocked = false;
@@ -115,11 +207,17 @@ export function stopSpeech() {
  * Main speech helper:
  * - waits for iOS unlock (first user tap)
  * - waits for voices
- * - syncs with avatar visemes
+ * - syncs with avatar visemes + expressions + gesture hooks
  */
 export async function speakInBrowser(
   text: string,
-  opts?: { rate?: number; pitch?: number; lang?: string; voiceName?: string }
+  opts?: {
+    rate?: number;
+    pitch?: number;
+    lang?: string;
+    voiceName?: string;
+    mood?: Mood; // 👈 NEW: avatar mood
+  }
 ): Promise<void> {
   if (!isBrowser()) throw new Error("Web Speech not supported");
   const t = (text || "").trim();
@@ -131,8 +229,8 @@ export async function speakInBrowser(
   await waitForVoices();
   await waitForAvatar();
 
-  const getA = () => (window as any).__AVATAR__ || null;
-  const has = (key: string) => Boolean(getA()?._has?.(key));
+  const avatar = getAvatar();
+  const has = (key: string) => Boolean(avatar?._has?.(key));
 
   const WIDE = ["jawOpen", "mouthOpen", "viseme_aa", "mouthAa"].find(has) || "jawOpen";
   const ROUND = ["mouthFunnel", "mouthPucker", "viseme_O", "viseme_U"].find(has) || "mouthFunnel";
@@ -239,6 +337,11 @@ export async function speakInBrowser(
 
   const timelineEndMs = timeline.length ? timeline[timeline.length - 1].time : 0;
 
+  const mood: Mood = opts?.mood ?? "neutral";
+
+  // Pre-speech mood (e.g. set happy/sad face before speaking)
+  setAvatarMood(mood, "pre");
+
   return new Promise<void>((resolve) => {
     const synth = window.speechSynthesis;
 
@@ -288,8 +391,9 @@ export async function speakInBrowser(
         const s = Math.sin(((performance.now() - t0) / 1000) * Math.PI * 2 * F);
         const wide = Math.max(0, BASE + A * Math.max(0, s));
         const round = Math.max(0, BASE + B * Math.max(0, -s));
-        (window as any).__AVATAR__?.setWeight?.(WIDE, wide);
-        (window as any).__AVATAR__?.setWeight?.(ROUND, round);
+        const Av = getAvatar();
+        Av?.setWeight?.(WIDE, wide);
+        Av?.setWeight?.(ROUND, round);
         rafId = requestAnimationFrame(tick);
       };
 
@@ -298,12 +402,17 @@ export async function speakInBrowser(
 
     u.onstart = () => {
       startedAt = performance.now();
-      (window as any).__AVATAR__?.playVisemes?.(timeline);
+
+      // Gesture + mood during speech
+      avatarTalkStart();
+      setAvatarMood(mood, "during");
+
+      getAvatar()?.playVisemes?.(timeline);
 
       fillerInt = setInterval(() => {
         const elapsed = performance.now() - startedAt;
         if (elapsed > timelineEndMs + 150) {
-          (window as any).__AVATAR__?.pulseWord?.();
+          getAvatar()?.pulseWord?.();
         }
       }, 140);
 
@@ -313,8 +422,12 @@ export async function speakInBrowser(
     const cleanup = () => {
       if (fillerInt) clearInterval(fillerInt);
       if (rafId !== null) cancelAnimationFrame(rafId);
-      (window as any).__AVATAR__?.playVisemes?.([]);
+      getAvatar()?.playVisemes?.([]);
       speakingLock = false;
+
+      // Stop gesture + go back to neutral
+      avatarTalkStop();
+      setAvatarMood("neutral", "after");
     };
 
     u.onend = () => {

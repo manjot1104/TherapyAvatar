@@ -10,8 +10,17 @@ import { MeshoptDecoder } from "three-stdlib";
 
 type VisemeKey = string;
 
-// 👉 yahan se face kitna upar hai control hoga
-const PITCH_UP = -0.18; // -0.10 se -0.30 ke beech try kar sakta hai
+const PITCH_UP = -0.18;
+
+type Vec3 = { x: number; y: number; z: number };
+type FingerBone = {
+  bone: THREE.Object3D;
+  base: Vec3;
+};
+
+function deg(d: number) {
+  return THREE.MathUtils.degToRad(d);
+}
 
 function AvatarModel({
   url,
@@ -38,6 +47,7 @@ function AvatarModel({
     }
   );
 
+  // ------ mouth / viseme setup ------
   const morphTargets = useRef<Record<string, { mesh: any; index: number }>>({});
   const activeWeights = useRef<Record<string, number>>({});
 
@@ -82,7 +92,7 @@ function AvatarModel({
           tline.push(evt);
           continue;
         }
-        if (evt.key === last.key && (evt.time - last.time) < MIN_GAP) {
+        if (evt.key === last.key && evt.time - last.time < MIN_GAP) {
           last.value = Math.max(last.value, evt.value);
           last.time = Math.max(last.time, evt.time - 10);
         } else {
@@ -108,9 +118,16 @@ function AvatarModel({
 
     const pulseWord = () => {
       const pick =
-        ["jawOpen","mouthOpen","mouthFunnel","viseme_aa","viseme_E","viseme_U","viseme_O","mouthAa"]
-          .find((k) => morphTargets.current[k]) ||
-        Object.keys(morphTargets.current)[0];
+        [
+          "jawOpen",
+          "mouthOpen",
+          "mouthFunnel",
+          "viseme_aa",
+          "viseme_E",
+          "viseme_U",
+          "viseme_O",
+          "mouthAa",
+        ].find((k) => morphTargets.current[k]) || Object.keys(morphTargets.current)[0];
       if (!pick) return;
       setWeight(pick, 0.9);
       setTimeout(() => decayAll(0.3), 120);
@@ -121,20 +138,176 @@ function AvatarModel({
     onReady({ setWeight, decayAll, playVisemes, pulseWord, _has });
   }, [scene, onReady]);
 
-  const root = useRef<THREE.Object3D>(null);
-  const t = useRef(0);
+  // ------ skeleton: arms + fingers ------
 
-  // 👉 initial pose: face thoda upar + still
+  const bonesRef = useRef<{
+    rUpper?: THREE.Object3D;
+    rLower?: THREE.Object3D;
+    rHand?: THREE.Object3D;
+    lUpper?: THREE.Object3D;
+    lLower?: THREE.Object3D;
+    lHand?: THREE.Object3D;
+  }>({});
+
+  const baseRotRef = useRef<{
+    rUpper?: Vec3;
+    rLower?: Vec3;
+    rHand?: Vec3;
+    lUpper?: Vec3;
+    lLower?: Vec3;
+    lHand?: Vec3;
+  }>({});
+
+  const rightFingers = useRef<FingerBone[]>([]);
+  const leftFingers = useRef<FingerBone[]>([]);
+
+  useEffect(() => {
+    scene.traverse((obj) => {
+      const mesh = obj as any;
+      if (!(mesh as any).isBone) return;
+
+      const name: string = mesh.name || "";
+      const n = name.toLowerCase();
+
+      const isRightUpper =
+        n.includes("rightarm") ||
+        n.includes("right_upperarm") ||
+        n.includes("rightupperarm") ||
+        n.includes("rightshoulder") ||
+        n.includes("shoulder_r") ||
+        n.includes("upperarm_r") ||
+        n.includes("r_upperarm");
+
+      const isRightLower =
+        n.includes("rightforearm") ||
+        n.includes("right_lowerarm") ||
+        n.includes("rightlowerarm") ||
+        n.includes("rightelbow") ||
+        n.includes("r_forearm") ||
+        n.includes("forearm_r");
+
+      const isRightHand =
+        n.includes("righthand") ||
+        n.includes("hand_r") ||
+        n.includes("r_hand") ||
+        n.includes("rightwrist") ||
+        n.includes("wrist_r");
+
+      const isLeftUpper =
+        n.includes("leftarm") ||
+        n.includes("left_upperarm") ||
+        n.includes("leftupperarm") ||
+        n.includes("leftshoulder") ||
+        n.includes("shoulder_l") ||
+        n.includes("upperarm_l") ||
+        n.includes("l_upperarm");
+
+      const isLeftLower =
+        n.includes("leftforearm") ||
+        n.includes("left_lowerarm") ||
+        n.includes("leftlowerarm") ||
+        n.includes("leftelbow") ||
+        n.includes("l_forearm") ||
+        n.includes("forearm_l");
+
+      const isLeftHand =
+        n.includes("lefthand") ||
+        n.includes("hand_l") ||
+        n.includes("l_hand") ||
+        n.includes("leftwrist") ||
+        n.includes("wrist_l");
+
+      if (isRightUpper && !bonesRef.current.rUpper) {
+        bonesRef.current.rUpper = mesh;
+        baseRotRef.current.rUpper = {
+          x: mesh.rotation.x,
+          y: mesh.rotation.y,
+          z: mesh.rotation.z,
+        };
+      }
+      if (isRightLower && !bonesRef.current.rLower) {
+        bonesRef.current.rLower = mesh;
+        baseRotRef.current.rLower = {
+          x: mesh.rotation.x,
+          y: mesh.rotation.y,
+          z: mesh.rotation.z,
+        };
+      }
+      if (isRightHand && !bonesRef.current.rHand) {
+        bonesRef.current.rHand = mesh;
+        baseRotRef.current.rHand = {
+          x: mesh.rotation.x,
+          y: mesh.rotation.y,
+          z: mesh.rotation.z,
+        };
+      }
+
+      if (isLeftUpper && !bonesRef.current.lUpper) {
+        bonesRef.current.lUpper = mesh;
+        baseRotRef.current.lUpper = {
+          x: mesh.rotation.x,
+          y: mesh.rotation.y,
+          z: mesh.rotation.z,
+        };
+      }
+      if (isLeftLower && !bonesRef.current.lLower) {
+        bonesRef.current.lLower = mesh;
+        baseRotRef.current.lLower = {
+          x: mesh.rotation.x,
+          y: mesh.rotation.y,
+          z: mesh.rotation.z,
+        };
+      }
+      if (isLeftHand && !bonesRef.current.lHand) {
+        bonesRef.current.lHand = mesh;
+        baseRotRef.current.lHand = {
+          x: mesh.rotation.x,
+          y: mesh.rotation.y,
+          z: mesh.rotation.z,
+        };
+      }
+
+      // finger detection
+      const looksLikeFinger =
+        n.includes("finger") ||
+        n.includes("thumb") ||
+        n.includes("index") ||
+        n.includes("middle") ||
+        n.includes("ring") ||
+        n.includes("pinky") ||
+        n.includes("little");
+
+      if (looksLikeFinger) {
+        const base: Vec3 = {
+          x: mesh.rotation.x,
+          y: mesh.rotation.y,
+          z: mesh.rotation.z,
+        };
+        const node: FingerBone = { bone: mesh, base };
+
+        if (n.includes("right") || n.includes("r_")) {
+          rightFingers.current.push(node);
+        } else if (n.includes("left") || n.includes("l_")) {
+          leftFingers.current.push(node);
+        }
+      }
+    });
+  }, [scene]);
+
+  const root = useRef<THREE.Object3D>(null);
+  const timeRef = useRef(0);
+  const talkFactorRef = useRef(0); // 0 = idle, 1 = full talking
+
   useEffect(() => {
     if (root.current) {
-      root.current.rotation.set(PITCH_UP, 0, 0); // x, y, z
+      root.current.rotation.set(PITCH_UP, 0, 0);
     }
   }, []);
 
   useFrame((_, dt) => {
-    t.current += dt;
+    timeRef.current += dt;
 
-    // ❌ koi sway / ghoomna nahi, sirf blink
+    // Blink
     if (Math.random() < dt * 0.2) {
       const L = morphTargets.current["eyeBlink_L"];
       const R = morphTargets.current["eyeBlink_R"];
@@ -146,6 +319,101 @@ function AvatarModel({
           R.mesh.morphTargetInfluences![R.index] = 0;
         }, 90);
       }
+    }
+
+    // Speech state
+    let isTalking = false;
+    if (typeof window !== "undefined" && (window as any).speechSynthesis) {
+      isTalking = (window as any).speechSynthesis.speaking;
+    }
+
+    // Smooth talk factor
+    const targetTalk = isTalking ? 1 : 0;
+    const k = Math.min(1, dt * 5);
+    talkFactorRef.current += (targetTalk - talkFactorRef.current) * k;
+    const f = talkFactorRef.current;
+
+    const t = timeRef.current;
+
+    const { rUpper, rLower, rHand, lUpper, lLower, lHand } = bonesRef.current;
+    const {
+      rUpper: bRU,
+      rLower: bRL,
+      rHand: bRH,
+      lUpper: bLU,
+      lLower: bLL,
+      lHand: bLH,
+    } = baseRotRef.current;
+
+    // ------- Right arm: main expressive (small but visible) -------
+    if (rUpper && bRU) {
+      const bend = deg(8) * Math.sin(t * 1.4);      // x bend
+      const sway = deg(4) * Math.sin(t * 0.9);      // z sway
+      rUpper.rotation.x = bRU.x + f * bend;
+      rUpper.rotation.y = bRU.y;
+      rUpper.rotation.z = bRU.z + f * sway;
+    }
+    if (rLower && bRL) {
+      const bend = deg(10) * Math.sin(t * 1.6 + 0.4);
+      rLower.rotation.x = bRL.x + f * bend;
+      rLower.rotation.y = bRL.y;
+      rLower.rotation.z = bRL.z;
+    }
+    if (rHand && bRH) {
+      const twist = deg(6) * Math.sin(t * 1.8 + 0.8);
+      rHand.rotation.x = bRH.x;
+      rHand.rotation.y = bRH.y;
+      rHand.rotation.z = bRH.z + f * twist;
+    }
+
+    // ------- Left arm: softer mirror -------
+    if (lUpper && bLU) {
+      const bend = deg(5) * Math.sin(t * 1.3 + 1.0);
+      const sway = deg(3) * Math.sin(t * 0.8 + 0.6);
+      lUpper.rotation.x = bLU.x + f * bend;
+      lUpper.rotation.y = bLU.y;
+      lUpper.rotation.z = bLU.z + f * sway;
+    }
+    if (lLower && bLL) {
+      const bend = deg(7) * Math.sin(t * 1.5 + 1.4);
+      lLower.rotation.x = bLL.x + f * bend;
+      lLower.rotation.y = bLL.y;
+      lLower.rotation.z = bLL.z;
+    }
+    if (lHand && bLH) {
+      const twist = deg(4) * Math.sin(t * 1.7 + 1.7);
+      lHand.rotation.x = bLH.x;
+      lHand.rotation.y = bLH.y;
+      lHand.rotation.z = bLH.z + f * twist;
+    }
+
+    // ------- Fingers: subtle curl / relax -------
+    const fingerAmpRight = deg(10);
+    const fingerAmpLeft = deg(8);
+
+    rightFingers.current.forEach((fb, i) => {
+      const phase = i * 0.4;
+      const curl = fingerAmpRight * Math.sin(t * 2.0 + phase) * f;
+      fb.bone.rotation.x = fb.base.x + curl;
+      fb.bone.rotation.y = fb.base.y;
+      fb.bone.rotation.z = fb.base.z;
+    });
+
+    leftFingers.current.forEach((fb, i) => {
+      const phase = i * 0.4 + 0.7;
+      const curl = fingerAmpLeft * Math.sin(t * 1.9 + phase) * f;
+      fb.bone.rotation.x = fb.base.x + curl;
+      fb.bone.rotation.y = fb.base.y;
+      fb.bone.rotation.z = fb.base.z;
+    });
+
+    // ------- Body: light bob -------
+    if (root.current) {
+      const baseY = -1.2;
+      const amp = 0.008;
+      const freq = 1.1;
+      const bob = Math.sin(t * freq) * amp * (0.4 + 0.6 * f); // idle me kam, talking me zyada
+      root.current.position.y = baseY + bob;
     }
   });
 
@@ -193,7 +461,6 @@ export default function AvatarCanvas({ modelUrl }: { modelUrl: string }) {
   return (
     <Canvas
       shadows
-      // 👉 camera bhi thoda niche kiya, taa ki top-down feel kam ho
       camera={{ position: [0, 1.1, 2.1], fov: 38 }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       dpr={[1, 2]}
@@ -205,8 +472,6 @@ export default function AvatarCanvas({ modelUrl }: { modelUrl: string }) {
         <AvatarModel url={modelUrl} onReady={handleReady} />
         <Environment preset="city" />
       </Suspense>
-
-      {/* CameraControls deliberately removed => no zoom/rotate/pan */}
     </Canvas>
   );
 }

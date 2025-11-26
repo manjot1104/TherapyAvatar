@@ -324,34 +324,61 @@ export default function ScenarioRunner({
   useEffect(() => {
     setOptionStatuses(Array(q.options.length).fill("idle"));
     setLocked(false);
-    setVisibleCount(q.options.length); // show all options
-    setShowOptions(true);
+    // ⬇️ yahan se change: options pehle hide, phir speech ke sath appear
+    setVisibleCount(0);
+    setShowOptions(false);
   }, [blockIdx, qIdx, q.options.length]);
 
-  /* Speak FULL script: question + options */
+  /* Speak question + then options one by one */
   useEffect(() => {
-    const prompt = q.prompt;
-    const optionTexts = q.options.map((opt) => removeEmojiRough(opt));
+    let cancelled = false;
 
-    setCaption(prompt);
+    const runSpeech = async () => {
+      const prompt = q.prompt;
+      const optionTexts = q.options.map((opt) => removeEmojiRough(opt));
 
-    const fullScript =
-      optionTexts.length > 0
-        ? `${prompt}. ${optionTexts.join(". ")}`
-        : prompt;
+      setCaption(prompt);
 
-    setSpokenScript(fullScript);
+      // fullScript sirf caption / logging ke liye
+      const fullScript =
+        optionTexts.length > 0
+          ? `${prompt}. ${optionTexts.join(". ")}`
+          : prompt;
+      setSpokenScript(fullScript);
 
-    stopSpeech();
-    (async () => {
+      stopSpeech();
+
       try {
-        await speakInBrowser(fullScript, { rate: 0.96 });
+        // 1) Pehle sirf question bolo
+        await speakInBrowser(prompt, { rate: 0.96 });
       } catch {
         // ignore
       }
-    })();
+
+      if (cancelled) return;
+
+      // 2) Ab options dikhana & bolna start
+      setShowOptions(true);
+
+      for (let i = 0; i < optionTexts.length; i++) {
+        if (cancelled) break;
+
+        // is option ko visible karo
+        setVisibleCount((prev) => (prev < i + 1 ? i + 1 : prev));
+
+        try {
+          await speakInBrowser(optionTexts[i], { rate: 0.96 });
+        } catch {
+          // ignore
+        }
+        if (cancelled) break;
+      }
+    };
+
+    runSpeech();
 
     return () => {
+      cancelled = true;
       stopSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -436,7 +463,9 @@ export default function ScenarioRunner({
     // Chat log
     addTurn({ speaker: "child", text: optText });
     if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
-      persistTurn(meta.sessionId, { speaker: "child", text: optText }).catch(() => {});
+      persistTurn(meta.sessionId, { speaker: "child", text: optText }).catch(
+        () => {}
+      );
     }
 
     const qNow = questions[qIdx];
@@ -447,7 +476,9 @@ export default function ScenarioRunner({
     const correctText = qNow.options[qNow.correctIndex];
 
     setOptionStatuses((prev) =>
-      prev.map((s, i) => (i === optIndex ? (isCorrect ? "correct" : "wrong") : s))
+      prev.map((s, i) =>
+        i === optIndex ? (isCorrect ? "correct" : "wrong") : s
+      )
     );
     if (isCorrect) setAnswersCorrect((c) => c + 1);
 
@@ -529,7 +560,10 @@ export default function ScenarioRunner({
     <>
       {/* HUD (top-right) */}
       <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30 flex flex-wrap items-center gap-1 sm:gap-2">
-        <Badge variant="outline" className="bg-white/70 backdrop-blur text-xs sm:text-sm">
+        <Badge
+          variant="outline"
+          className="bg-white/70 backdrop-blur text-xs sm:text-sm"
+        >
           {scenario.title}
         </Badge>
         <Badge variant="outline" className="text-xs sm:text-sm">

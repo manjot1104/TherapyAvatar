@@ -1,7 +1,12 @@
 // src/components/ScenarioRunner.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
@@ -30,6 +35,31 @@ function removeEmojiRough(s: string) {
 type OptionStatus = "idle" | "correct" | "wrong";
 
 /* -------------------------------------------
+   Pop-in wrapper (zoom effect)
+-------------------------------------------- */
+function PopInOption({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      setMounted(true);
+    });
+  }, []);
+
+  return (
+    <div
+      className={[
+        "transition-transform transition-opacity duration-300 ease-out",
+        mounted ? "scale-100 opacity-100" : "scale-[1.6] opacity-0",
+      ].join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
+
+/* -------------------------------------------
    CloudPill — mobile-first
 -------------------------------------------- */
 function CloudPill({
@@ -52,8 +82,6 @@ function CloudPill({
   const idleCls =
     "bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white border-white/60 dark:border-slate-700";
   const okCls = "bg-green-500/90 text-white border-green-600";
-  const badCls = "bg-red-500/90 text-white border-green-600";
-
   const badRealCls = "bg-red-500/90 text-white border-red-600";
 
   return (
@@ -124,20 +152,20 @@ function CloudsOverlay({
           {options.map((opt, idx) =>
             idx < visibleCount ? (
               <div
-                key={`M-${idx}`}
+                key={`opt-${idx}-${visibleCount}`}
                 className="sr-float1"
                 style={{ animationDelay: `${idx * 0.08}s` }}
               >
-                <CloudPill
-                  text={opt}
-                  status={statuses[idx] ?? "idle"}
-                  disabled={locked}
-                  onClick={() => !locked && onPick(opt, idx)}
-                />
+                <PopInOption>
+                  <CloudPill
+                    text={opt}
+                    status={statuses[idx] ?? "idle"}
+                    disabled={locked}
+                    onClick={() => !locked && onPick(opt, idx)}
+                  />
+                </PopInOption>
               </div>
-            ) : (
-              <div key={`M-${idx}`} />
-            )
+            ) : null
           )}
         </div>
       </div>
@@ -156,22 +184,24 @@ function CloudsOverlay({
         >
           {left.map((opt, idx) => {
             const realIndex = idx * 2;
-            if (realIndex >= visibleCount) return <div key={`L-${idx}`} />;
+            if (realIndex >= visibleCount) return null;
             return (
               <div
-                key={`L-${idx}`}
+                key={`L-${idx}-${visibleCount}`}
                 className="sr-float1"
                 style={{
                   animationDelay: `${idx * 0.12}s`,
                   transform: `translateY(${idx * 3}px)`,
                 }}
               >
-                <CloudPill
-                  text={opt}
-                  status={statuses[realIndex] ?? "idle"}
-                  disabled={locked}
-                  onClick={() => !locked && onPick(opt, realIndex)}
-                />
+                <PopInOption>
+                  <CloudPill
+                    text={opt}
+                    status={statuses[realIndex] ?? "idle"}
+                    disabled={locked}
+                    onClick={() => !locked && onPick(opt, realIndex)}
+                  />
+                </PopInOption>
               </div>
             );
           })}
@@ -189,22 +219,24 @@ function CloudsOverlay({
         >
           {right.map((opt, idx) => {
             const realIndex = idx * 2 + 1;
-            if (realIndex >= visibleCount) return <div key={`R-${idx}`} />;
+            if (realIndex >= visibleCount) return null;
             return (
               <div
-                key={`R-${idx}`}
+                key={`R-${idx}-${visibleCount}`}
                 className="sr-float2"
                 style={{
                   animationDelay: `${idx * 0.12}s`,
                   transform: `translateY(${idx * 3}px)`,
                 }}
               >
-                <CloudPill
-                  text={opt}
-                  status={statuses[realIndex] ?? "idle"}
-                  disabled={locked}
-                  onClick={() => !locked && onPick(opt, realIndex)}
-                />
+                <PopInOption>
+                  <CloudPill
+                    text={opt}
+                    status={statuses[realIndex] ?? "idle"}
+                    disabled={locked}
+                    onClick={() => !locked && onPick(opt, realIndex)}
+                  />
+                </PopInOption>
               </div>
             );
           })}
@@ -296,7 +328,6 @@ export default function ScenarioRunner({
         return;
       }
 
-      // highest block jahan passed = true
       let highestPassed = -1;
       for (const row of data) {
         if (row.passed) {
@@ -312,7 +343,6 @@ export default function ScenarioRunner({
         setBlockIdx(startBlock);
         setMaxBlockIdx(startBlock);
       } else {
-        // koi pass nahi mila → Block 1 se
         setBlockIdx(0);
         setMaxBlockIdx(0);
       }
@@ -324,7 +354,6 @@ export default function ScenarioRunner({
   useEffect(() => {
     setOptionStatuses(Array(q.options.length).fill("idle"));
     setLocked(false);
-    // ⬇️ yahan se change: options pehle hide, phir speech ke sath appear
     setVisibleCount(0);
     setShowOptions(false);
   }, [blockIdx, qIdx, q.options.length]);
@@ -339,7 +368,6 @@ export default function ScenarioRunner({
 
       setCaption(prompt);
 
-      // fullScript sirf caption / logging ke liye
       const fullScript =
         optionTexts.length > 0
           ? `${prompt}. ${optionTexts.join(". ")}`
@@ -349,28 +377,24 @@ export default function ScenarioRunner({
       stopSpeech();
 
       try {
-        // 1) Pehle sirf question bolo
-        await speakInBrowser(prompt, { rate: 0.96 });
-      } catch {
-        // ignore
-      }
+        // slow question
+        await speakInBrowser(prompt, { rate: 0.75 });
+      } catch {}
 
       if (cancelled) return;
 
-      // 2) Ab options dikhana & bolna start
       setShowOptions(true);
 
       for (let i = 0; i < optionTexts.length; i++) {
         if (cancelled) break;
 
-        // is option ko visible karo
         setVisibleCount((prev) => (prev < i + 1 ? i + 1 : prev));
 
         try {
-          await speakInBrowser(optionTexts[i], { rate: 0.96 });
-        } catch {
-          // ignore
-        }
+          // slow options
+          await speakInBrowser(optionTexts[i], { rate: 0.75 });
+        } catch {}
+
         if (cancelled) break;
       }
     };
@@ -460,7 +484,6 @@ export default function ScenarioRunner({
 
     stopSpeech();
 
-    // Chat log
     addTurn({ speaker: "child", text: optText });
     if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
       persistTurn(meta.sessionId, { speaker: "child", text: optText }).catch(
@@ -494,20 +517,18 @@ export default function ScenarioRunner({
     try {
       await speakInBrowser(
         isCorrect ? "Good job!" : "Okay, let's try the next one.",
-        { rate: 0.98 }
+        { rate: 0.9 }
       );
     } catch {}
 
     await new Promise((r) => setTimeout(r, 350));
 
-    // More questions in this block?
     if (qIdx < 2) {
       setQIdx((i) => i + 1);
       return;
     }
 
-    // Block finished
-    const stars = answersCorrect + (isCorrect ? 1 : 0); // 0..3
+    const stars = answersCorrect + (isCorrect ? 1 : 0);
     const passed = stars >= 2;
     const newTotal = totalStars + stars;
 
@@ -526,12 +547,10 @@ export default function ScenarioRunner({
       answersCorrect + (isCorrect ? 1 : 0)
     );
 
-    // Next block UI ke liye
     const rawNext = passed
       ? Math.min(blockIdx + 1, scenario.blocks.length - 1)
       : blockIdx;
 
-    // Max block (kabhi peeche nahi)
     const newMaxBlock = Math.max(maxBlockIdx, rawNext);
 
     await saveProgress(newMaxBlock, newTotal);

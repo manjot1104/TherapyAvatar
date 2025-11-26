@@ -37,27 +37,26 @@ type OptionStatus = "idle" | "correct" | "wrong";
 /* -------------------------------------------
    Pop-in wrapper (zoom effect)
 -------------------------------------------- */
-function PopInOption({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+     function PopInOption({ children }: { children: ReactNode }) {
+       const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      setMounted(true);
-    });
-  }, []);
+       useEffect(() => {
+         requestAnimationFrame(() => {
+           setMounted(true);
+         });
+       }, []);
 
-  return (
-    <div
-      className={[
-        "transition-transform transition-opacity duration-300 ease-out",
-        mounted ? "scale-100 opacity-100" : "scale-[1.6] opacity-0",
-      ].join(" ")}
-    >
-      {children}
-    </div>
-  );
-}
-
+       return (
+         <div
+           className={[
+             mounted ? "animate-[popInBounce_0.6s_ease-out_forwards]" : "scale-[2.5] opacity-0",
+           ].join(" ")}
+         >
+           {children}
+         </div>
+       );
+     }
+     
 
 /* -------------------------------------------
    CloudPill — mobile-first
@@ -67,11 +66,13 @@ function CloudPill({
   onClick,
   status = "idle",
   disabled = false,
+  isSpeaking = false,
 }: {
   text: string;
   onClick: () => void;
   status?: OptionStatus;
   disabled?: boolean;
+  isSpeaking?: boolean;
 }) {
   const isCorrect = status === "correct";
   const isWrong = status === "wrong";
@@ -90,6 +91,8 @@ function CloudPill({
       disabled={disabled}
       className={[
         base,
+        "transition-all duration-300",
+        isSpeaking ? "scale-[1.25]" : "scale-100",
         "transition-colors duration-300",
         isCorrect ? okCls : isWrong ? badRealCls : idleCls,
         disabled ? "opacity-95 cursor-not-allowed" : "",
@@ -117,6 +120,7 @@ function CloudsOverlay({
   statuses,
   locked,
   visibleCount,
+  currentSpeakingIndex,
 }: {
   options: string[];
   onPick: (txt: string, idx: number) => void;
@@ -124,6 +128,7 @@ function CloudsOverlay({
   statuses: OptionStatus[];
   locked: boolean;
   visibleCount: number;
+  currentSpeakingIndex: number | null;
 }) {
   const { left, right } = useMemo(() => splitSides(options), [options]);
   if (!visible || options.length === 0) return null;
@@ -133,40 +138,78 @@ function CloudsOverlay({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20" aria-hidden>
-      {/* Phones: bottom sheet (raised) */}
-      <div
-        className="md:hidden absolute inset-x-2 bottom-0 flex justify-center pointer-events-none"
-        style={{ bottom: bottomSafe }}
-      >
+      {/* Phones: floating clouds */}
+      <div className="md:hidden absolute inset-0 z-20" aria-hidden>
+        {/* LEFT stack for mobile */}
         <div
           className={[
-            "pointer-events-auto w-full max-w-[560px]",
-            "rounded-2xl border border-white/50 dark:border-slate-700",
-            "bg-white/82 dark:bg-slate-900/72 backdrop-blur-lg",
-            "px-3.5 py-3",
-            "grid gap-2.5",
-            "xsm-two-col",
-            "cloud-sheet shadow-xl",
+            "absolute pointer-events-auto flex flex-col items-end",
+            "gap-3",
+            "top-[50%] -translate-y-1/2",
+            "right-[55%]",
+            "max-w-[150px]",
           ].join(" ")}
         >
-          {options.map((opt, idx) =>
-            idx < visibleCount ? (
+          {left.map((opt, idx) => {
+            const realIndex = idx * 2;
+            if (realIndex >= visibleCount) return null;
+            return (
               <div
-                key={`opt-${idx}-${visibleCount}`}
+                key={`M-L-${idx}-${visibleCount}`}
                 className="sr-float1"
-                style={{ animationDelay: `${idx * 0.08}s` }}
+                style={{
+                  animationDelay: `${idx * 0.12}s`,
+                  transform: `translateY(${idx * 2}px)`,
+                }}
               >
                 <PopInOption>
                   <CloudPill
                     text={opt}
-                    status={statuses[idx] ?? "idle"}
+                    status={statuses[realIndex] ?? "idle"}
                     disabled={locked}
-                    onClick={() => !locked && onPick(opt, idx)}
+                    onClick={() => !locked && onPick(opt, realIndex)}
+                    isSpeaking={currentSpeakingIndex === realIndex}
                   />
                 </PopInOption>
               </div>
-            ) : null
-          )}
+            );
+          })}
+        </div>
+
+        {/* RIGHT stack for mobile */}
+        <div
+          className={[
+            "absolute pointer-events-auto flex flex-col items-start",
+            "gap-3",
+            "top-[50%] -translate-y-1/2",
+            "left-[55%]",
+            "max-w-[150px]",
+          ].join(" ")}
+        >
+          {right.map((opt, idx) => {
+            const realIndex = idx * 2 + 1;
+            if (realIndex >= visibleCount) return null;
+            return (
+              <div
+                key={`M-R-${idx}-${visibleCount}`}
+                className="sr-float2"
+                style={{
+                  animationDelay: `${idx * 0.12}s`,
+                  transform: `translateY(${idx * 2}px)`,
+                }}
+              >
+                <PopInOption>
+                  <CloudPill
+                    text={opt}
+                    status={statuses[realIndex] ?? "idle"}
+                    disabled={locked}
+                    onClick={() => !locked && onPick(opt, realIndex)}
+                    isSpeaking={currentSpeakingIndex === realIndex}
+                  />
+                </PopInOption>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -200,6 +243,7 @@ function CloudsOverlay({
                     status={statuses[realIndex] ?? "idle"}
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
+                    isSpeaking={currentSpeakingIndex === realIndex}
                   />
                 </PopInOption>
               </div>
@@ -235,6 +279,7 @@ function CloudsOverlay({
                     status={statuses[realIndex] ?? "idle"}
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
+                    isSpeaking={currentSpeakingIndex === realIndex}
                   />
                 </PopInOption>
               </div>
@@ -254,11 +299,13 @@ export default function ScenarioRunner({
   setCaption,
   setSpokenScript,
   selectedChildId,
+  isSpeaking,
 }: {
   scenarioKey: keyof typeof SCENARIOS;
   setCaption: (q: string) => void;
   setSpokenScript: (s: string) => void;
   selectedChildId?: string | null;
+  isSpeaking: boolean;
 }) {
   const scenario = useMemo(
     () => getScenarioWithShuffledOptions(scenarioKey),
@@ -282,6 +329,7 @@ export default function ScenarioRunner({
   const [optionStatuses, setOptionStatuses] = useState<OptionStatus[]>([]);
   const [locked, setLocked] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
+  const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
 
   const block = scenario.blocks[blockIdx];
   const questions = block.questions.slice(0, 3);
@@ -389,6 +437,7 @@ export default function ScenarioRunner({
         if (cancelled) break;
 
         setVisibleCount((prev) => (prev < i + 1 ? i + 1 : prev));
+        setCurrentSpeakingIndex(i);
 
         try {
           // slow options
@@ -397,6 +446,7 @@ export default function ScenarioRunner({
 
         if (cancelled) break;
       }
+      setCurrentSpeakingIndex(null);
     };
 
     runSpeech();
@@ -609,6 +659,7 @@ export default function ScenarioRunner({
         statuses={optionStatuses}
         locked={locked}
         visibleCount={visibleCount}
+        currentSpeakingIndex={currentSpeakingIndex}
       />
     </>
   );

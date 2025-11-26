@@ -32,6 +32,7 @@ export default function TherapyMainPage() {
     useState<keyof typeof SCENARIOS>("greeting_teacher");
 
   const [isPaused, setIsPaused] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const selectedChildId: string | null = null;
 
@@ -53,6 +54,16 @@ export default function TherapyMainPage() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // poll speech synthesis speaking state
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        setIsSpeaking(window.speechSynthesis.speaking);
+      }
+    }, 100);
+    return () => clearInterval(interval);
   }, []);
 
   /* ======= CONTROL HANDLERS ======= */
@@ -113,6 +124,7 @@ export default function TherapyMainPage() {
               setCaption={setCaptionText}             // 👈 question
               setSpokenScript={setSpokenScript}       // 👈 question + options
               selectedChildId={selectedChildId || undefined}
+              isSpeaking={isSpeaking}
             />
 
             {/* ===== Avatar Canvas (fills stage) ===== */}

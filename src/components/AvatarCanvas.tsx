@@ -33,6 +33,7 @@ function AvatarModel({
     playVisemes: (timeline: { time: number; key: VisemeKey; value: number }[]) => void;
     pulseWord: () => void;
     _has: (key: string) => boolean;
+    playGesture: (name: string) => void;
   }) => void;
 }) {
   const { scene } = useGLTF(
@@ -135,7 +136,60 @@ function AvatarModel({
 
     const _has = (key: string) => Boolean(morphTargets.current[key]);
 
-    onReady({ setWeight, decayAll, playVisemes, pulseWord, _has });
+    const playGesture = (name: string) => {
+      // Implement gesture animations using bone rotations
+      const gestureDuration = 2000; // 2 seconds
+      const startTime = performance.now();
+
+      const animateGesture = () => {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / gestureDuration, 1);
+        const easeInOut = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+        const { rUpper, rLower, rHand, lUpper, lLower, lHand } = bonesRef.current;
+        const { rUpper: bRU, rLower: bRL, rHand: bRH, lUpper: bLU, lLower: bLL, lHand: bLH } = baseRotRef.current;
+
+        switch (name) {
+          case "point":
+            if (rUpper && bRU) rUpper.rotation.x = bRU.x + deg(15) * easeInOut;
+            if (rLower && bRL) rLower.rotation.x = bRL.x + deg(20) * easeInOut;
+            if (rHand && bRH) rHand.rotation.z = bRH.z + deg(10) * easeInOut;
+            break;
+          case "wave":
+            if (rUpper && bRU) rUpper.rotation.z = bRU.z + deg(20) * Math.sin(progress * Math.PI * 4) * easeInOut;
+            if (rLower && bRL) rLower.rotation.z = bRL.z + deg(15) * Math.sin(progress * Math.PI * 4) * easeInOut;
+            break;
+          case "open_hands":
+            if (rHand && bRH) rHand.rotation.x = bRH.x + deg(5) * easeInOut;
+            if (lHand && bLH) lHand.rotation.x = bLH.x + deg(5) * easeInOut;
+            break;
+          case "think":
+            if (rUpper && bRU) rUpper.rotation.x = bRU.x + deg(10) * easeInOut;
+            if (rLower && bRL) rLower.rotation.x = bRL.x + deg(15) * easeInOut;
+            if (rHand && bRH) rHand.rotation.z = bRH.z + deg(5) * easeInOut;
+            break;
+          case "celebrate":
+            if (rUpper && bRU) rUpper.rotation.z = bRU.z + deg(25) * Math.sin(progress * Math.PI * 2) * easeInOut;
+            if (lUpper && bLU) lUpper.rotation.z = bLU.z - deg(25) * Math.sin(progress * Math.PI * 2) * easeInOut;
+            break;
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animateGesture);
+        } else {
+          // Reset to base positions
+          if (rUpper && bRU) rUpper.rotation.x = bRU.x;
+          if (rLower && bRL) rLower.rotation.x = bRL.x;
+          if (rHand && bRH) rHand.rotation.z = bRH.z;
+          if (lUpper && bLU) lUpper.rotation.z = bLU.z;
+          if (lHand && bLH) lHand.rotation.x = bLH.x;
+        }
+      };
+
+      animateGesture();
+    };
+
+    onReady({ setWeight, decayAll, playVisemes, pulseWord, _has, playGesture });
   }, [scene, onReady]);
 
   // ------ skeleton: arms + fingers ------

@@ -12,6 +12,9 @@ Never make medical claims. Ask one question at a time.`;
 
 router.post("/", async (req, res) => {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: "OpenAI API key not configured" });
+    }
     // 👇 create the client *here*, after envs are loaded
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 

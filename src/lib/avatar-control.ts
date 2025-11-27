@@ -41,3 +41,19 @@ export function avatarDisappointed() {
   avatarApi?.playGesture?.("idle");
   avatarSetExpression("sad");
 }
+
+export function avatarPoint() {
+  avatarApi?.playGesture?.("point");
+}
+
+export function avatarWave() {
+  avatarApi?.playGesture?.("wave");
+}
+
+export function avatarOpenHands() {
+  avatarApi?.playGesture?.("open_hands");
+}
+
+export function avatarThink() {
+  avatarApi?.playGesture?.("think");
+}

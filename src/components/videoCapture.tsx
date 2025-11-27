@@ -45,7 +45,11 @@ export default function VideoCapture({
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
-        audio: false,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;

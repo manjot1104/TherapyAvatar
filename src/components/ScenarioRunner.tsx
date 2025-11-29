@@ -1,4 +1,4 @@
-// src/components/ScenarioRunner.tsx
+ // src/components/ScenarioRunner.tsx
 "use client";
 
 import React, {
@@ -19,9 +19,9 @@ import { persistTurn, persistMastery } from "@/lib/session-persist";
 /* -------------------------------------------
    Helpers
 -------------------------------------------- */
-function splitSides(options: string[]) {
-  const L: string[] = [];
-  const R: string[] = [];
+function splitSides(options: { text: string; imageUrl?: string }[]) {
+  const L: { text: string; imageUrl?: string }[] = [];
+  const R: { text: string; imageUrl?: string }[] = [];
   options.forEach((o, i) => (i % 2 === 0 ? L.push(o) : R.push(o)));
   return { left: L, right: R };
 }
@@ -62,51 +62,70 @@ type OptionStatus = "idle" | "correct" | "wrong";
    CloudPill — mobile-first
 -------------------------------------------- */
 function CloudPill({
-  text,
+  option,
   onClick,
   status = "idle",
   disabled = false,
   isSpeaking = false,
 }: {
-  text: string;
+  option: { text: string; imageUrl?: string };
   onClick: () => void;
   status?: OptionStatus;
   disabled?: boolean;
   isSpeaking?: boolean;
-}) {
+}): ReactNode {
+  const [imageError, setImageError] = useState(false);
+
   const isCorrect = status === "correct";
   const isWrong = status === "wrong";
+  const hasImage = option.imageUrl && !imageError;
 
   const base =
-    "group relative rounded-[1.5rem] px-3.5 py-2.5 text-[0.95rem] font-semibold border shadow-xl drop-shadow-md transition-all active:scale-[0.98] w-full max-w-full text-center supports-[hover:hover]:hover:scale-[1.03] md:rounded-[2rem] md:px-6 md:py-3 md:text-base md:w-auto md:min-w-[190px] lg:px-7 lg:py-4 lg:text-lg lg:min-w-[210px]";
+    "group relative rounded-[1.5rem] px-3.5 py-2.5 text-[0.95rem] font-semibold border shadow-xl drop-shadow-md transition-all active:scale-[0.98] w-full max-w-full text-center supports-[hover:hover]:hover:scale-[1.03] md:rounded-[2rem] md:px-6 md:py-3 md:text-base md:w-auto md:min-w-[190px] lg:px-7 lg:py-4 lg:text-lg lg:min-w-[210px] overflow-hidden";
 
-  const idleCls =
-    "bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white border-white/60 dark:border-slate-700";
+  const imageButtonBase = base + " md:min-h-[100px] lg:min-h-[120px]";
+
+  const idleCls = "bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white border-white/60 dark:border-slate-700";
   const okCls = "bg-green-500/90 text-white border-green-600";
   const badRealCls = "bg-red-500/90 text-white border-red-600";
 
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={[
-        base,
-        "transition-all duration-300",
-        isSpeaking ? "scale-[1.25]" : "scale-100",
-        "transition-colors duration-300",
-        isCorrect ? okCls : isWrong ? badRealCls : idleCls,
-        disabled ? "opacity-95 cursor-not-allowed" : "",
-      ].join(" ")}
-    >
-      {status === "idle" && (
-        <>
-          <span className="hidden md:block absolute -left-3 bottom-1.5 w-3.5 h-3.5 rounded-full bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700" />
-          <span className="hidden md:block absolute -left-5 bottom-4 w-3 h-3 rounded-full bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700" />
-          <span className="hidden md:block absolute -right-2.5 top-1.5 w-3 h-3 rounded-full bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700" />
-        </>
+    <div className="flex flex-col items-center">
+      {hasImage && (
+        <div className="mb-2">
+          <img
+            src={option.imageUrl}
+            alt={option.text}
+            className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-lg object-cover border-2 border-white/60 dark:border-slate-700 shadow-md"
+            onError={() => setImageError(true)}
+          />
+        </div>
       )}
-      <span className="truncate">{text}</span>
-    </button>
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={[
+          base,
+          "md:min-h-[120px] lg:min-h-[140px]",
+          "transition-all duration-300",
+          isSpeaking ? "scale-[1.25]" : "scale-100",
+          "transition-colors duration-300",
+          isCorrect ? okCls : isWrong ? badRealCls : idleCls,
+          disabled ? "opacity-95 cursor-not-allowed" : "",
+        ].join(" ")}
+      >
+        {status === "idle" && (
+          <>
+            <span className="hidden md:block absolute -left-3 bottom-1.5 w-3.5 h-3.5 rounded-full bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700" />
+            <span className="hidden md:block absolute -left-5 bottom-4 w-3 h-3 rounded-full bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700" />
+            <span className="hidden md:block absolute -right-2.5 top-1.5 w-3 h-3 rounded-full bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700" />
+          </>
+        )}
+        <span className="truncate text-xs mt-1">
+          {option.text}
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -121,14 +140,16 @@ function CloudsOverlay({
   locked,
   visibleCount,
   currentSpeakingIndex,
+  currentVisibleIndex,
 }: {
-  options: string[];
-  onPick: (txt: string, idx: number) => void;
+  options: { text: string; imageUrl?: string }[];
+  onPick: (opt: { text: string; imageUrl?: string }, idx: number) => void;
   visible: boolean;
   statuses: OptionStatus[];
   locked: boolean;
   visibleCount: number;
   currentSpeakingIndex: number | null;
+  currentVisibleIndex: number | null;
 }) {
   const { left, right } = useMemo(() => splitSides(options), [options]);
   if (!visible || options.length === 0) return null;
@@ -164,7 +185,7 @@ function CloudsOverlay({
               >
                 <PopInOption>
                   <CloudPill
-                    text={opt}
+                    option={opt}
                     status={statuses[realIndex] ?? "idle"}
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
@@ -200,7 +221,7 @@ function CloudsOverlay({
               >
                 <PopInOption>
                   <CloudPill
-                    text={opt}
+                    option={opt}
                     status={statuses[realIndex] ?? "idle"}
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
@@ -239,7 +260,7 @@ function CloudsOverlay({
               >
                 <PopInOption>
                   <CloudPill
-                    text={opt}
+                    option={opt}
                     status={statuses[realIndex] ?? "idle"}
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
@@ -275,7 +296,7 @@ function CloudsOverlay({
               >
                 <PopInOption>
                   <CloudPill
-                    text={opt}
+                    option={opt}
                     status={statuses[realIndex] ?? "idle"}
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
@@ -330,6 +351,7 @@ export default function ScenarioRunner({
   const [locked, setLocked] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
+  const [currentVisibleIndex, setCurrentVisibleIndex] = useState<number | null>(null);
 
   const block = scenario.blocks[blockIdx];
   const questions = block.questions.slice(0, 3);
@@ -412,7 +434,7 @@ export default function ScenarioRunner({
 
     const runSpeech = async () => {
       const prompt = q.prompt;
-      const optionTexts = q.options.map((opt) => removeEmojiRough(opt));
+      const optionTexts = q.options.map((opt) => removeEmojiRough(opt.text));
 
       setCaption(prompt);
 
@@ -432,11 +454,12 @@ export default function ScenarioRunner({
       if (cancelled) return;
 
       setShowOptions(true);
+      setVisibleCount(0);
 
       for (let i = 0; i < optionTexts.length; i++) {
         if (cancelled) break;
 
-        setVisibleCount((prev) => (prev < i + 1 ? i + 1 : prev));
+        setVisibleCount(i); // Show only the current option
         setCurrentSpeakingIndex(i);
 
         try {
@@ -447,6 +470,7 @@ export default function ScenarioRunner({
         if (cancelled) break;
       }
       setCurrentSpeakingIndex(null);
+      setVisibleCount(optionTexts.length); // Show all options after speaking
     };
 
     runSpeech();
@@ -528,15 +552,15 @@ export default function ScenarioRunner({
   };
 
   /* child picked an option */
-  const handlePick = async (optText: string, optIndex: number) => {
+  const handlePick = async (opt: { text: string; imageUrl?: string }, optIndex: number) => {
     if (locked) return;
     setLocked(true);
 
     stopSpeech();
 
-    addTurn({ speaker: "child", text: optText });
+    addTurn({ speaker: "child", text: opt.text });
     if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
-      persistTurn(meta.sessionId, { speaker: "child", text: optText }).catch(
+      persistTurn(meta.sessionId, { speaker: "child", text: opt.text }).catch(
         () => {}
       );
     }
@@ -545,8 +569,8 @@ export default function ScenarioRunner({
     const isCorrect = optIndex === qNow.correctIndex;
 
     const questionText = qNow.prompt;
-    const chosenText = qNow.options[optIndex] ?? optText;
-    const correctText = qNow.options[qNow.correctIndex];
+    const chosenText = qNow.options[optIndex]?.text ?? opt.text;
+    const correctText = qNow.options[qNow.correctIndex]?.text;
 
     setOptionStatuses((prev) =>
       prev.map((s, i) =>
@@ -660,6 +684,7 @@ export default function ScenarioRunner({
         locked={locked}
         visibleCount={visibleCount}
         currentSpeakingIndex={currentSpeakingIndex}
+        currentVisibleIndex={currentVisibleIndex}
       />
     </>
   );

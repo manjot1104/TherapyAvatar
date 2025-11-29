@@ -1,7 +1,10 @@
-# TODO: Make Avatar Hand Movements Natural Like Human
+# TODO: Replace Option Text with Images
 
-## Tasks
-- [x] Modify AvatarCanvas.tsx to replace sine-wave animations with natural, varied movements including randomness, idle fidgets, and expressive talking gestures.
-- [x] Add subtle idle hand movements when not talking (e.g., occasional finger twitches, slight arm shifts).
-- [x] Enhance talking animations with varied amplitudes, smoother transitions, and occasional expressive gestures.
-- [ ] Test the updated animations in the browser to ensure they look natural and not over-animated.
+## Steps to Complete
+- [x] Update Q type in scenarios.ts to include imageUrl in options (already done)
+- [ ] Add imageUrl to all options in all scenarios (use placeholders)
+- [ ] Update shuffleQuestion function to handle new option structure
+- [ ] Modify CloudPill in ScenarioRunner.tsx to display images instead of text
+- [ ] Ensure speaking still uses text
+- [ ] Add placeholder images to public/images/
+- [ ] Test the changes in the app

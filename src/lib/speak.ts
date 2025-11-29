@@ -357,7 +357,7 @@ export async function speakInBrowser(
     const u = new SpeechSynthesisUtterance(t);
     u.rate = rate;
     u.pitch = opts?.pitch ?? 1.0;
-    u.lang = opts?.lang ?? "en-US";
+    u.lang = opts?.lang ?? "en-IN";
 
     const voices = synth.getVoices();
     let v: SpeechSynthesisVoice | undefined;

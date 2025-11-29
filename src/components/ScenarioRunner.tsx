@@ -172,7 +172,7 @@ function CloudsOverlay({
         >
           {left.map((opt, idx) => {
             const realIndex = idx * 2;
-            if (realIndex >= visibleCount) return null;
+            if (currentVisibleIndex !== null ? realIndex !== currentVisibleIndex : realIndex >= visibleCount) return null;
             return (
               <div
                 key={`M-L-${idx}-${visibleCount}`}
@@ -182,7 +182,6 @@ function CloudsOverlay({
                   transform: `translateY(${idx * 2}px)`,
                 }}
               >
-                <PopInOption>
                   <CloudPill
                     option={opt}
                     status={statuses[realIndex] ?? "idle"}
@@ -190,7 +189,6 @@ function CloudsOverlay({
                     onClick={() => !locked && onPick(opt, realIndex)}
                     isSpeaking={currentSpeakingIndex === realIndex}
                   />
-                </PopInOption>
               </div>
             );
           })}
@@ -208,7 +206,7 @@ function CloudsOverlay({
         >
           {right.map((opt, idx) => {
             const realIndex = idx * 2 + 1;
-            if (realIndex >= visibleCount) return null;
+            if (currentVisibleIndex !== null ? realIndex !== currentVisibleIndex : realIndex >= visibleCount) return null;
             return (
               <div
                 key={`M-R-${idx}-${visibleCount}`}
@@ -247,7 +245,7 @@ function CloudsOverlay({
         >
           {left.map((opt, idx) => {
             const realIndex = idx * 2;
-            if (realIndex >= visibleCount) return null;
+            if (currentVisibleIndex !== null ? realIndex !== currentVisibleIndex : realIndex >= visibleCount) return null;
             return (
               <div
                 key={`L-${idx}-${visibleCount}`}
@@ -283,7 +281,7 @@ function CloudsOverlay({
         >
           {right.map((opt, idx) => {
             const realIndex = idx * 2 + 1;
-            if (realIndex >= visibleCount) return null;
+            if (currentVisibleIndex !== null ? realIndex !== currentVisibleIndex : realIndex >= visibleCount) return null;
             return (
               <div
                 key={`R-${idx}-${visibleCount}`}
@@ -453,12 +451,20 @@ export default function ScenarioRunner({
       if (cancelled) return;
 
       setShowOptions(true);
-      setVisibleCount(0);
 
       for (let i = 0; i < optionTexts.length; i++) {
         if (cancelled) break;
 
-        setVisibleCount(i); // Show only the current option
+        if (i > 0) {
+          // Hide previous option before showing next
+          setVisibleCount(0);
+          setCurrentVisibleIndex(null);
+          setCurrentSpeakingIndex(null);
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        setVisibleCount(1); // Show only one option
+        setCurrentVisibleIndex(i);
         setCurrentSpeakingIndex(i);
 
         try {
@@ -469,6 +475,7 @@ export default function ScenarioRunner({
         if (cancelled) break;
       }
       setCurrentSpeakingIndex(null);
+      setCurrentVisibleIndex(null);
       setVisibleCount(optionTexts.length); // Show all options after speaking
     };
 

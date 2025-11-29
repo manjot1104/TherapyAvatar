@@ -81,7 +81,7 @@ function CloudPill({
   const hasImage = option.imageUrl && !imageError;
 
   const base =
-    "group relative rounded-[1.5rem] px-3.5 py-2.5 text-[0.95rem] font-semibold border shadow-xl drop-shadow-md transition-all active:scale-[0.98] w-full max-w-full text-center supports-[hover:hover]:hover:scale-[1.03] md:rounded-[2rem] md:px-6 md:py-3 md:text-base md:w-auto md:min-w-[190px] lg:px-7 lg:py-4 lg:text-lg lg:min-w-[210px] overflow-hidden";
+    "group relative rounded-[1.5rem] px-2 py-1.5 text-[0.95rem] font-semibold border shadow-xl drop-shadow-md transition-all active:scale-[0.98] w-full max-w-full text-center supports-[hover:hover]:hover:scale-[1.03] md:rounded-[2rem] md:px-4 md:py-2 md:text-base md:w-fit md:min-w-[100px] lg:px-5 lg:py-3 lg:text-lg lg:w-fit lg:min-w-[120px] overflow-hidden";
 
   const imageButtonBase = base + " md:min-h-[100px] lg:min-h-[120px]";
 
@@ -96,7 +96,7 @@ function CloudPill({
           <img
             src={option.imageUrl}
             alt={option.text}
-            className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-lg object-cover border-2 border-white/60 dark:border-slate-700 shadow-md"
+            className="w-28 h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 rounded-lg object-cover border-2 border-white/60 dark:border-slate-700 shadow-md"
             onError={() => setImageError(true)}
           />
         </div>
@@ -106,7 +106,6 @@ function CloudPill({
         disabled={disabled}
         className={[
           base,
-          "md:min-h-[120px] lg:min-h-[140px]",
           "transition-all duration-300",
           isSpeaking ? "scale-[1.25]" : "scale-100",
           "transition-colors duration-300",

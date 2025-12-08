@@ -757,8 +757,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "\"ਮੇਰੀ ਵਾਰੀ\" ਦਾ ਕੀ ਮਤਲਬ ਹੈ?" 
         },
         options: [
-          { text: { en: "It’s my time to do it", hi: "यह मेरा करने का समय है", pa: "ਇਹ ਮੇਰੇ ਕਰਨ ਦਾ ਸਮਾਂ ਹੈ" }, imageUrl: "Its my time to do it.png" },
-          { text: { en: "It’s your time", hi: "यह तुम्हारा समय है", pa: "ਇਹ ਤੁਹਾਡਾ ਸਮਾਂ ਹੈ" }, imageUrl: "Its your time.png" }
+          { text: { en: "It’s my time to do it", hi: "यह मेरा करने का समय है", pa: "ਇਹ ਮੇਰੇ ਕਰਨ ਦਾ ਸਮਾਂ ਹੈ" }, imageUrl: "its_my time.png" },
+          { text: { en: "It’s your time", hi: "यह तुम्हारा समय है", pa: "ਇਹ ਤੁਹਾਡਾ ਸਮਾਂ ਹੈ" }, imageUrl: "its_your_time.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_2.png"
@@ -770,8 +770,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "\"ਤੁਹਾਡੇ ਵਾਰੀ\" ਦਾ ਕੀ ਮਤਲਬ ਹੈ?" 
         },
         options: [
-          { text: { en: "It’s the other person’s time", hi: "यह दूसरे व्यक्ति का समय है", pa: "ਇਹ ਦੂਜੇ ਵਿਅਕਤੀ ਦਾ ਸਮਾਂ ਹੈ" }, imageUrl: "Its the other persons time.png" },
-          { text: { en: "It’s my time", hi: "यह मेरा समय है", pa: "ਇਹ ਮੇਰਾ ਸਮਾਂ ਹੈ" }, imageUrl: "Its my time.png" }
+          { text: { en: "It’s the other person’s time", hi: "यह दूसरे व्यक्ति का समय है", pa: "ਇਹ ਦੂਜੇ ਵਿਅਕਤੀ ਦਾ ਸਮਾਂ ਹੈ" }, imageUrl: "others_persons_time.png" },
+          { text: { en: "It’s my time", hi: "यह मेरा समय है", pa: "ਇਹ ਮੇਰਾ ਸਮਾਂ ਹੈ" }, imageUrl: "its_my_time.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_3.png"
@@ -783,8 +783,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜੇ ਅਧਿਆਪਕ ਕਹਿੰਦੇ ਹਨ, \"ਹੁਣ ਰਵਿ ਦੀ ਵਾਰੀ,\" ਤਾਂ ਤੁਹਾਨੂੰ ਕੀ ਕਰਨਾ ਚਾਹੀਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "Wait", hi: "प्रतीक्षा करो", pa: "ਉਡੀਕ ਕਰੋ" }, imageUrl: "Wait.png" },
-          { text: { en: "Grab the toy", hi: "खिलौना छीन लो", pa: "ਖਿਲੌਣਾ ਛੀਨ ਲਵੋ" }, imageUrl: "Grab the toy.png" }
+          { text: { en: "Wait", hi: "प्रतीक्षा करो", pa: "ਉਡੀਕ ਕਰੋ" }, imageUrl: "wait.png" },
+          { text: { en: "Grab the toy", hi: "खिलौना छीन लो", pa: "ਖਿਲੌਣਾ ਛੀਨ ਲਵੋ" }, imageUrl: "grab_the_toy.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_4.png"
@@ -796,8 +796,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਤੁਹਾਨੂੰ ਕਿਵੇਂ ਪਤਾ ਲਗੇਗਾ ਕਿ ਤੁਹਾਡੀ ਵਾਰੀ ਆਉਣ ਵਾਲੀ ਹੈ?" 
         },
         options: [
-          { text: { en: "When the teacher calls my name", hi: "जब अध्यापक मेरा नाम पुकारें", pa: "ਜਦੋਂ ਅਧਿਆਪਕਾ ਮੇਰਾ ਨਾਮ ਲਏ" }, imageUrl: "When the teacher calls my name.png" },
-          { text: { en: "I just grab it", hi: "मैं बस इसे पकड़ लूँ", pa: "ਮੈਂ ਸਿਰਫ ਇਸ ਨੂੰ ਫੜ ਲਵਾਂਗਾ" }, imageUrl: "I just grab it.png" }
+          { text: { en: "When the teacher calls my name", hi: "जब अध्यापक मेरा नाम पुकारें", pa: "ਜਦੋਂ ਅਧਿਆਪਕਾ ਮੇਰਾ ਨਾਮ ਲਏ" }, imageUrl: "my_name.png" },
+          { text: { en: "I just grab it", hi: "मैं बस इसे पकड़ लूँ", pa: "ਮੈਂ ਸਿਰਫ ਇਸ ਨੂੰ ਫੜ ਲਵਾਂਗਾ" }, imageUrl: "grab_it.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_5.png"
@@ -809,8 +809,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਕੀ ਤੁਹਾਨੂੰ ਨਾਮ ਪੁਕਾਰਣ ਤੋਂ ਪਹਿਲਾਂ ਖਿਲੌਣਾ ਫੜ ਲੈਣਾ ਚਾਹੀਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "No", hi: "नहीं", pa: "ਨਹੀਂ" }, imageUrl: "No.png" },
-          { text: { en: "Yes", hi: "हाँ", pa: "ਹਾਂ" }, imageUrl: "Yes.png" }
+          { text: { en: "No", hi: "नहीं", pa: "ਨਹੀਂ" }, imageUrl: "no.png" },
+          { text: { en: "Yes", hi: "हाँ", pa: "ਹਾਂ" }, imageUrl: "yes.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_6.png"
@@ -822,8 +822,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਤੁਹਾਡੇ ਹੱਥ ਕਿੱਥੇ ਹੋਣੇ ਚਾਹੀਦੇ ਹਨ?" 
         },
         options: [
-          { text: { en: "On lap", hi: "गोद में", pa: "ਗੋਦ ਵਿੱਚ" }, imageUrl: "On lap.png" },
-          { text: { en: "Taking toy", hi: "खिलौना पकड़ने में", pa: "ਖਿਲੌਣਾ ਲੈਣ ਵਿੱਚ" }, imageUrl: "Taking toy.png" }
+          { text: { en: "On lap", hi: "गोद में", pa: "ਗੋਦ ਵਿੱਚ" }, imageUrl: "on_lap.png" },
+          { text: { en: "Taking toy", hi: "खिलौना पकड़ने में", pa: "ਖਿਲੌਣਾ ਲੈਣ ਵਿੱਚ" }, imageUrl: "taking_toy.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_7.png"
@@ -835,8 +835,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਤੁਸੀਂ ਕਿੱਥੇ ਦੇਖ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "The person playing", hi: "जो खेल रहा है (उस व्यक्ति को)", pa: "ਖੇਡ ਰਹੇ ਵਿਅਕਤੀ ਨੂੰ" }, imageUrl: "The person playing.png" },
-          { text: { en: "The ceiling", hi: "छत को", pa: "ਛੱਤ ਨੂੰ" }, imageUrl: "The ceiling.png" }
+          { text: { en: "The person playing", hi: "जो खेल रहा है (उस व्यक्ति को)", pa: "ਖੇਡ ਰਹੇ ਵਿਅਕਤੀ ਨੂੰ" }, imageUrl: "person_playing.png" },
+          { text: { en: "The ceiling", hi: "छत को", pa: "ਛੱਤ ਨੂੰ" }, imageUrl: "ceiling.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_8.png"
@@ -848,8 +848,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਤੁਸੀਂ ਚੁੱਪਚਾਪ ਕੀ ਸੋਚ ਜਾਂ ਕਹਿ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "“I can wait my turn.”", hi: "\"मैं अपनी बारी का इंतज़ार कर सकता हूँ\"", pa: "\"ਮੈਂ ਆਪਣੀ ਵਾਰੀ ਦਾ ਉਡੀਕ ਕਰ ਸਕਦਾ ਹਾਂ\"" }, imageUrl: "I can wait my turn.png" },
-          { text: { en: "“I want it now.”", hi: "\"मुझे अभी चाहिए\"", pa: "\"ਮੈਨੂੰ ਹੁਣੇ ਚਾਹੀਦਾ ਹੈ\"" }, imageUrl: "I want it now.png" }
+          { text: { en: "“I can wait my turn.”", hi: "\"मैं अपनी बारी का इंतज़ार कर सकता हूँ\"", pa: "\"ਮੈਂ ਆਪਣੀ ਵਾਰੀ ਦਾ ਉਡੀਕ ਕਰ ਸਕਦਾ ਹਾਂ\"" }, imageUrl: "i_can_wait_my_turn.png" },
+          { text: { en: "“I want it now.”", hi: "\"मुझे अभी चाहिए\"", pa: "\"ਮੈਨੂੰ ਹੁਣੇ ਚਾਹੀਦਾ ਹੈ\"" }, imageUrl: "i_want_it now.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_9.png"
@@ -861,8 +861,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜੇ ਉਡੀਕ ਲੰਮੀ ਲਗਦੀ ਹੈ, ਤਾਂ ਤੁਸੀਂ ਕੀ ਕਰ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "Take deep breaths", hi: "गहरी साँस लो", pa: "ਡੂੰਘੀਆਂ ਸਾਹਾਂ ਲਵੋ" }, imageUrl: "Take deep breaths.png" },
-          { text: { en: "Yell", hi: "चिल्लाओ", pa: "ਚਿਲਾਓ" }, imageUrl: "Yell.png" }
+          { text: { en: "Take deep breaths", hi: "गहरी साँस लो", pa: "ਡੂੰਘੀਆਂ ਸਾਹਾਂ ਲਵੋ" }, imageUrl: "take_deep_breaths.png" },
+          { text: { en: "Yell", hi: "चिल्लाओ", pa: "ਚਿਲਾਓ" }, imageUrl: "yell.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_10.png"
@@ -874,8 +874,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਤੁਸੀਂ ਆਪਣੇ ਆਪ ਨੂੰ ਕਿਵੇਂ ਵਿਅਸਤ ਰੱਖ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "Count to 5", hi: "5 तक गिनो", pa: "5 ਤੱਕ ਗਿਣੋ" }, imageUrl: "Count to 5.png" },
-          { text: { en: "Kick the chair", hi: "कुर्सी को लात मारो", pa: "ਕੁਰਸੀ ਨੂੰ ਲਾਤ ਮਾਰੋ" }, imageUrl: "Kick the chair.png" }
+          { text: { en: "Count to 5", hi: "5 तक गिनो", pa: "5 ਤੱਕ ਗਿਣੋ" }, imageUrl: "count_to_5.png" },
+          { text: { en: "Kick the chair", hi: "कुर्सी को लात मारो", pa: "ਕੁਰਸੀ ਨੂੰ ਲਾਤ ਮਾਰੋ" }, imageUrl: "kick_the_chair.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_11.png"
@@ -887,8 +887,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜੇ ਤੁਸੀਂ ਭੁੱਲ ਜਾਂਦੇ ਹੋ ਕਿ ਕਿਸ ਦੀ ਵਾਰੀ ਹੈ, ਤਾਂ ਤੁਸੀਂ ਕੀ ਪੁੱਛ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "“Is it my turn now?”", hi: "\"क्या अब मेरी बारी है?\"", pa: "\"ਕੀ ਹੁਣ ਮੇਰੀ ਵਾਰੀ ਹੈ?\"" }, imageUrl: "Is it my turn now.png" },
-          { text: { en: "“Give me!”", hi: "\"मुझे दो!\"", pa: "\"ਮੇਨੂੰ ਦੇਓ!\"" }, imageUrl: "Give me.png" }
+          { text: { en: "“Is it my turn now?”", hi: "\"क्या अब मेरी बारी है?\"", pa: "\"ਕੀ ਹੁਣ ਮੇਰੀ ਵਾਰੀ ਹੈ?\"" }, imageUrl: "is_it_my_turn_now.png" },
+          { text: { en: "“Give me!”", hi: "\"मुझे दो!\"", pa: "\"ਮੇਨੂੰ ਦੇਓ!\"" }, imageUrl: "give_me.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_12.png"
@@ -900,8 +900,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜਦੋਂ ਤੁਹਾਡੀ ਵਾਰੀ ਹੋਵੇ, ਤਾਂ ਤੁਹਾਨੂੰ ਕੀ کہنا ਚਾਹੀਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "“My turn!”", hi: "\"मेरी बारी!\"", pa: "\"ਮੇਰੀ ਵਾਰੀ!\"" }, imageUrl: "My turn.png" },
-          { text: { en: "“Give me!”", hi: "\"मुझे दो!\"", pa: "\"ਮੇਨੂੰ ਦੇਓ!\"" }, imageUrl: "Give me.png" }
+          { text: { en: "“My turn!”", hi: "\"मेरी बारी!\"", pa: "\"ਮੇਰੀ ਵਾਰੀ!\"" }, imageUrl: "my_turn.png" },
+          { text: { en: "“Give me!”", hi: "\"मुझे दो!\"", pa: "\"ਮੇਨੂੰ ਦੇਓ!\"" }, imageUrl: "give_me.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_13.png"
@@ -913,8 +913,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਕੀ ਲੈਣ ਲਈ ਧੱਕਾ ਦੇਣਾ ਚਾਹੀਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "No", hi: "नहीं", pa: "ਨਹੀਂ" }, imageUrl: "No.png" },
-          { text: { en: "Yes", hi: "हाँ", pa: "ਹਾਂ" }, imageUrl: "Yes.png" }
+          { text: { en: "No", hi: "नहीं", pa: "ਨਹੀਂ" }, imageUrl: "no.png" },
+          { text: { en: "Yes", hi: "हाँ", pa: "ਹਾਂ" }, imageUrl: "yes.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_14.png"
@@ -926,8 +926,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜਦੋਂ ਤੁਸੀਂ ਖਤਮ ਕਰ ਲਵੋ, ਤਾਂ ਤੁਸੀਂ ਕੀ ਕਹ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "“Now your turn.”", hi: "\"अब तुम्हारी बारी.\"", pa: "\"ਹੁਣ ਤੁਹਾਡੀ ਵਾਰੀ.\"" }, imageUrl: "Now your turn.png" },
-          { text: { en: "“Done!”", hi: "\"हो गया!\"", pa: "\"ਹੋ ਗਿਆ!\"" }, imageUrl: "Done.png" }
+          { text: { en: "“Now your turn.”", hi: "\"अब तुम्हारी बारी.\"", pa: "\"ਹੁਣ ਤੁਹਾਡੀ ਵਾਰੀ.\"" }, imageUrl: "now_your_turn.png" },
+          { text: { en: "“Done!”", hi: "\"हो गया!\"", pa: "\"ਹੋ ਗਿਆ!\"" }, imageUrl: "done.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_15.png"
@@ -939,8 +939,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਕੀ ਤੁਸੀਂ ਸਲਾਈਡ 'ਤੇ ਵੀ ਆਪਣੀ ਵਾਰੀ ਦੀ ਉਡੀਕ ਕਰ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "Yes", hi: "हाँ", pa: "ਹਾਂ" }, imageUrl: "Yes.png" },
-          { text: { en: "No", hi: "नहीं", pa: "ਨਹੀਂ" }, imageUrl: "No.png" }
+          { text: { en: "Yes", hi: "हाँ", pa: "ਹਾਂ" }, imageUrl: "yes.png" },
+          { text: { en: "No", hi: "नहीं", pa: "ਨਹੀਂ" }, imageUrl: "no.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_16.png"
@@ -952,8 +952,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਉਡੀਕ ਕਰਦੇ ਸਮੇਂ ਤੁਸੀਂ ਆਪਣੇ ਆਪ ਨੂੰ ਕੀ ਕਹ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "“I can do it.”", hi: "\"मैं कर सकता हूँ\"", pa: "\"ਮੈਂ ਕਰ ਸਕਦਾ ਹਾਂ\"" }, imageUrl: "I can do it.png" },
-          { text: { en: "“Hurry up!”", hi: "\"जल्दी करो!\"", pa: "\"ਜਲਦੀ ਕਰੋ!\"" }, imageUrl: "Hurry up.png" }
+          { text: { en: "“I can do it.”", hi: "\"मैं कर सकता हूँ\"", pa: "\"ਮੈਂ ਕਰ ਸਕਦਾ ਹਾਂ\"" }, imageUrl: "i_can_do_it.png" },
+          { text: { en: "“Hurry up!”", hi: "\"जल्दी करो!\"", pa: "\"ਜਲਦੀ ਕਰੋ!\"" }, imageUrl: "hurry_up.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_17.png"
@@ -965,8 +965,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜਦੋਂ ਤੁਸੀਂ ਚੰਗੀ ਤਰ੍ਹਾਂ ਉਡੀਕ ਕਰਦੇ ਹੋ, ਤਾਂ ਦੋਸਤਾਂ ਨੂੰ ਕਿਵੇਂ ਮਹਿਸੂਸ ਹੁੰਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "Happy.png" },
-          { text: { en: "Annoyed", hi: "नाराज़", pa: "ਨਾਰाज़" }, imageUrl: "Annoyed.png" }
+          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "happy.png" },
+          { text: { en: "Annoyed", hi: "नाराज़", pa: "ਨਾਰाज़" }, imageUrl: "annoyed.png" }
         ],
         correctIndex: 0,
         imageUrl: "wait_turn_18.png"
@@ -986,8 +986,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜਦੋਂ ਦੋ ਬੱਚੇ ਇੱਕੋ ਖਿਲੌਣਾ ਚਾਹੁੰਦੇ ਹਨ, ਤਾਂ ਉਹ ਕੀ ਕਰ ਸਕਦੇ ਹਨ?" 
         },
         options: [
-          { text: { en: "Take turns", hi: "बारी-बारी से खेल सकते हैं", pa: "ਵਾਰੀ ਵਾਰੀ ਖੇਡ ਸਕਦੇ ਹਨ" }, imageUrl: "Take turns.png" },
-          { text: { en: "Fight", hi: "लड़ सकते हैं", pa: "ਲੜ ਸਕਦੇ ਹਨ" }, imageUrl: "Fight.png" }
+          { text: { en: "Take turns", hi: "बारी-बारी से खेल सकते हैं", pa: "ਵਾਰੀ ਵਾਰੀ ਖੇਡ ਸਕਦੇ ਹਨ" }, imageUrl: "take_turns.png" },
+          { text: { en: "Fight", hi: "लड़ सकते हैं", pa: "ਲੜ ਸਕਦੇ ਹਨ" }, imageUrl: "fight.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_1.png"
@@ -999,8 +999,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਸਾਂਝਾ ਕਰਨ ਦਾ ਕੀ ਮਤਲਬ ਹੈ?" 
         },
         options: [
-          { text: { en: "Letting someone use your toy too", hi: "अपना खिलौना किसी और को भी इस्तेमाल करने देना", pa: "ਆਪਣਾ ਖਿਡੌਣਾ ਕਿਸੇ ਹੋਰ ਨੂੰ ਵੀ ਵਰਤਣ ਦੇਣਾ" }, imageUrl: "Letting someone use your toy too.png" },
-          { text: { en: "Keeping it only for yourself", hi: "इसे सिर्फ अपने पास रखना", pa: "ਸਿਰਫ ਆਪਣੇ ਲਈ ਰੱਖਣਾ" }, imageUrl: "Keeping it only for yourself.png" }
+          { text: { en: "Letting someone use your toy too", hi: "अपना खिलौना किसी और को भी इस्तेमाल करने देना", pa: "ਆਪਣਾ ਖਿਡੌਣਾ ਕਿਸੇ ਹੋਰ ਨੂੰ ਵੀ ਵਰਤਣ ਦੇਣਾ" }, imageUrl: "letting_someone_use_your_toy_too.png" },
+          { text: { en: "Keeping it only for yourself", hi: "इसे सिर्फ अपने पास रखना", pa: "ਸਿਰਫ ਆਪਣੇ ਲਈ ਰੱਖਣਾ" }, imageUrl: "keeping_it_only_for_yourself.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_2.png"
@@ -1012,8 +1012,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਕੀ ਸਾਂਝਾ ਕਰਨਾ ਚੰਗੀ ਗੱਲ ਹੈ ਜਾਂ ਮੰਦੀ ਗੱਲ?" 
         },
         options: [
-          { text: { en: "Good thing", hi: "अच्छी बात", pa: "ਚੰਗੀ ਗੱਲ" }, imageUrl: "Good thing.png" },
-          { text: { en: "Bad thing", hi: "बुरी बात", pa: "ਮੰਦੀ ਗੱਲ" }, imageUrl: "Bad thing.png" }
+          { text: { en: "Good thing", hi: "अच्छी बात", pa: "ਚੰਗੀ ਗੱਲ" }, imageUrl: "good_thing.png" },
+          { text: { en: "Bad thing", hi: "बुरी बात", pa: "ਮੰਦੀ ਗੱਲ" }, imageUrl: "bad_thing.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_3.png"
@@ -1025,8 +1025,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜਦੋਂ ਕੋਈ ਤੁਹਾਡੇ ਨਾਲ ਸਾਂਝਾ ਕਰਦਾ ਹੈ ਤਾਂ ਤੁਹਾਨੂੰ ਕਿਵੇਂ ਲੱਗਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "Happy.png" },
-          { text: { en: "Sad", hi: "दुखी", pa: "ਉਦਾਸ" }, imageUrl: "Sad.png" }
+          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "happy.png" },
+          { text: { en: "Sad", hi: "दुखी", pa: "ਉਦਾਸ" }, imageUrl: "sad.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_4.png"
@@ -1038,8 +1038,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜਦੋਂ ਤੁਸੀਂ ਸਾਂਝਾ ਕਰਦੇ ਹੋ ਤਾਂ ਤੁਹਾਡਾ ਦੋਸਤ ਕਿਵੇਂ ਮਹਿਸੂਸ ਕਰਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "Happy.png" },
-          { text: { en: "Sad", hi: "दुखी", pa: "ਉਦਾਸ" }, imageUrl: "Sad.png" }
+          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "happy.png" },
+          { text: { en: "Sad", hi: "दुखी", pa: "ਉਦਾਸ" }, imageUrl: "sad.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_5.png"
@@ -1051,8 +1051,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜੇ ਤੁਸੀਂ ਸਾਰੇ ਖਿਲੌਣੇ ਆਪਣੇ ਕੋਲ ਰੱਖਦੇ ਹੋ, ਤਾਂ ਹੋਰਾਂ ਨੂੰ ਕਿਵੇਂ ਲੱਗਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "Sad", hi: "दुखी", pa: "ਉਦਾਸ" }, imageUrl: "Sad.png" },
-          { text: { en: "Angry", hi: "गुस्सा", pa: "ਗੁੱਸੇ" }, imageUrl: "Angry.png" }
+          { text: { en: "Sad", hi: "दुखी", pa: "ਉਦਾਸ" }, imageUrl: "sad.png" },
+          { text: { en: "Angry", hi: "गुस्सा", pa: "ਗੁੱਸੇ" }, imageUrl: "angry.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_6.png"
@@ -1064,8 +1064,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜੇ ਤੁਹਾਨੂੰ ਦੋਸਤ ਦਾ ਖਿਲੌਣਾ ਚਾਹੀਦਾ ਹੈ, ਤਾਂ ਤੁਸੀਂ ਕੀ ਕਹ ਸਕਦੇ ਹੋ?" 
         },
         options: [
-          { text: { en: "“Can I play with it, please?”", hi: "\"क्या मैं इसके साथ खेल सकता हूँ, कृपया?\"", pa: "\"ਕੀ ਮੈਂ ਇਸ ਨਾਲ ਖੇਡ ਸਕਦਾ ਹਾਂ, ਜੀ?\"" }, imageUrl: "Can I play with it please.png" },
-          { text: { en: "“Give me now!”", hi: "\"अभी दो!\"", pa: "\"ਹੁਣੇ ਦੇ ਦੋ!\"" }, imageUrl: "Give me now.png" }
+          { text: { en: "“Can I play with it, please?”", hi: "\"क्या मैं इसके साथ खेल सकता हूँ, कृपया?\"", pa: "\"ਕੀ ਮੈਂ ਇਸ ਨਾਲ ਖੇਡ ਸਕਦਾ ਹਾਂ, ਜੀ?\"" }, imageUrl: "can_i_play_with_it_please.png" },
+          { text: { en: "“Give me now!”", hi: "\"अभी दो!\"", pa: "\"ਹੁਣੇ ਦੇ ਦੋ!\"" }, imageUrl: "give_me_now.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_7.png"
@@ -1077,8 +1077,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਕੀ ਤੂੰ ਆਪਣਾ ਖਿਲੌਣਾ ਲੁਕਾਉਣਾ ਚਾਹੀਦਾ ਹੈ ਜਾਂ ਪਹਿਲਾਂ ਪੁੱਛਣਾ ਚਾਹੀਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "Ask first", hi: "पहले पूछो", pa: "ਪਹਿਲਾਂ ਪੁੱਛੋ" }, imageUrl: "Ask first.png" },
-          { text: { en: "Grab it", hi: "छीन लो", pa: "ਛੀਨ ਲਵੋ" }, imageUrl: "Grab it.png" }
+          { text: { en: "Ask first", hi: "पहले पूछो", pa: "ਪਹਿਲਾਂ ਪੁੱਛੋ" }, imageUrl: "ask_first.png" },
+          { text: { en: "Grab it", hi: "छीन लो", pa: "ਛੀਨ ਲਵੋ" }, imageUrl: "grab_it.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_8.png"
@@ -1090,7 +1090,7 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜੇ ਤੇਰਾ ਦੋਸਤ ਕਹੇ \"ਰੁਕ\", ਤਾਂ ਤੂੰ ਕੀ ਕਹੇਗਾ?" 
         },
         options: [
-          { text: { en: "“Okay, I’ll wait.”", hi: "\"ठीक है, मैं इंतज़ार करूँगा\"", pa: "\"ਠੀਕ ਹੈ, ਮੈਂ ਉਡੀਕ ਕਰਾਂਗਾ\"" }, imageUrl: "Okay Ill wait.png" },
+          { text: { en: "“Okay, I’ll wait.”", hi: "\"ठीक है, मैं इंतज़ार करूँगा\"", pa: "\"ਠੀਕ ਹੈ, ਮੈਂ ਉਡੀਕ ਕਰਾਂਗਾ\"" }, imageUrl: "okay_will_wait.png" },
           { text: { en: "“No, give it.”", hi: "\"नहीं, मुझे दो\"", pa: "\"ਨਹੀਂ, ਦੇ ਦੋ\"" }, imageUrl: "No give it.png" }
         ],
         correctIndex: 0,
@@ -1103,8 +1103,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਜੇ ਤੇਰੇ ਕੋਲ ਇੱਕ ਖਿਲੌਨਾ ਕਾਰ ਹੈ ਅਤੇ ਤੇਰੇ ਦੋਸਤ ਕੋਲ ਨਹੀਂ ਹੈ, ਤਾਂ ਤੂੰ ਕੀ ਕਹਿ ਸਕਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "“You can play too!”", hi: "\"तुम भी खेल सकते हो!\"", pa: "\"ਤੂੰ ਵੀ ਖੇਡ ਸਕਦਾ ਹੈਂ!\"" }, imageUrl: "You can play too.png" },
-          { text: { en: "“No one can touch it.”", hi: "\"इसे कोई नहीं छू सकता!\"", pa: "\"ਇਸਨੂੰ ਕੋਈ ਨਹੀਂ ਛੂਹ ਸਕਦਾ!\"" }, imageUrl: "No one can touch it.png" }
+          { text: { en: "“You can play too!”", hi: "\"तुम भी खेल सकते हो!\"", pa: "\"ਤੂੰ ਵੀ ਖੇਡ ਸਕਦਾ ਹੈਂ!\"" }, imageUrl: "you_can_play_too.png" },
+          { text: { en: "“No one can touch it.”", hi: "\"इसे कोई नहीं छू सकता!\"", pa: "\"ਇਸਨੂੰ ਕੋਈ ਨਹੀਂ ਛੂਹ ਸਕਦਾ!\"" }, imageUrl: "No_one_can_touch_it.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_10.png"
@@ -1116,8 +1116,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਕੀ ਤੂੰ ਆਪਣਾ ਖਿਲੌਣਾ ਲੁਕਾਉਣਾ ਚਾਹੀਦਾ ਹੈ ਜਾਂ ਵਿਖਾਉਣਾ ਚਾਹੀਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "Show it", hi: "दिखाओ", pa: "ਵਖਾਓ" }, imageUrl: "Show it.png" },
-          { text: { en: "Hide it", hi: "छुपाओ", pa: "ਲੁਕਾਓ" }, imageUrl: "Hide it.png" }
+          { text: { en: "Show it", hi: "दिखाओ", pa: "ਵਖਾਓ" }, imageUrl: "Show_it.png" },
+          { text: { en: "Hide it", hi: "छुपाओ", pa: "ਲੁਕਾਓ" }, imageUrl: "Hide_it.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_11.png"
@@ -1142,8 +1142,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਵਾਰੀ ਦੇਣ ਤੋਂ ਪਹਿਲਾਂ ਤੂੰ ਕਿੰਨੀ ਦੇਰ ਖੇਡ ਸਕਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "A few minutes", hi: "कुछ मिनट", pa: "ਕੁਝ ਮਿੰਟ" }, imageUrl: "A few minutes.png" },
-          { text: { en: "All day", hi: "पूरा दिन", pa: "ਸਾਰਾ ਦਿਨ" }, imageUrl: "All day.png" }
+          { text: { en: "A few minutes", hi: "कुछ मिनट", pa: "ਕੁਝ ਮਿੰਟ" }, imageUrl: "A_few_minutes.png" },
+          { text: { en: "All day", hi: "पूरा दिन", pa: "ਸਾਰਾ ਦਿਨ" }, imageUrl: "All_day.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_13.png"
@@ -1155,8 +1155,8 @@ export const SCENARIOS: Record<string, Scenario> = {
           pa: "ਵਾਰੀ ਦੇਂਦੇ ਸਮੇਂ ਤੂੰ ਕੀ ਕਹਿ ਸਕਦਾ ਹੈ?" 
         },
         options: [
-          { text: { en: "“Now your turn!”", hi: "\"अब तुम्हारी बारी!\"", pa: "\"ਹੁਣ ਤੇਰੀ ਵਾਰੀ!\"" }, imageUrl: "Now your turn.png" },
-          { text: { en: "“Mine forever!”", hi: "\"हमेशा मेरी!\"", pa: "\"ਮੇਰੀ ਸਦਾ ਲਈ!\"" }, imageUrl: "Mine forever.png" }
+          { text: { en: "“Now your turn!”", hi: "\"अब तुम्हारी बारी!\"", pa: "\"ਹੁਣ ਤੇਰੀ ਵਾਰੀ!\"" }, imageUrl: "Now_your_turn.png" },
+          { text: { en: "“Mine forever!”", hi: "\"हमेशा मेरी!\"", pa: "\"ਮੇਰੀ ਸਦਾ ਲਈ!\"" }, imageUrl: "Mine_forever.png" }
         ],
         correctIndex: 0,
         imageUrl: "share_play_14.png"

@@ -1,4 +1,4 @@
- // src/components/ScenarioRunner.tsx
+// src/components/ScenarioRunner.tsx
 "use client";
 
 import React, {
@@ -10,82 +10,96 @@ import React, {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
-import { SCENARIOS, getScenarioWithShuffledOptions } from "@/data/scenarios";
+import {
+  SCENARIOS,
+  getScenarioWithShuffledOptions,
+  type Option,
+  type Q,
+} from "@/data/scenarios";
 import { speakInBrowser, stopSpeech } from "@/lib/speak";
 import { createClient } from "@/lib/supabase/browser-client";
 import { useSession } from "@/components/SessionSummary";
 import { persistTurn, persistMastery } from "@/lib/session-persist";
 
-/* -------------------------------------------
-   Helpers
--------------------------------------------- */
-function splitSides(options: { text: string; imageUrl?: string }[]) {
-  const L: { text: string; imageUrl?: string }[] = [];
-  const R: { text: string; imageUrl?: string }[] = [];
-  options.forEach((o, i) => (i % 2 === 0 ? L.push(o) : R.push(o)));
+/* ------------------------------------------- */
+function splitSides(options: Option[]) {
+  const L: Option[] = [];
+  const R: Option[] = [];
+  options.forEach((opt: Option, i: number) => {
+    if (i % 2 === 0) L.push(opt);
+    else R.push(opt);
+  });
   return { left: L, right: R };
 }
-function removeEmojiRough(s: string) {
-  return s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").trim();
+
+function removeEmojiRough(s?: string | null): string {
+  if (!s) return "";
+  return s
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "")
+    .trim();
 }
 
-/* -------------------------------------------
-   Types for option feedback
--------------------------------------------- */
 type OptionStatus = "idle" | "correct" | "wrong";
+type LangCode = "en" | "hi" | "pa";
 
-/* -------------------------------------------
-   Pop-in wrapper (zoom effect)
--------------------------------------------- */
-     function PopInOption({ children }: { children: ReactNode }) {
-       const [mounted, setMounted] = useState(false);
+type BlockLocal = {
+  title: string;
+  questions: Q[];
+};
 
-       useEffect(() => {
-         requestAnimationFrame(() => {
-           setMounted(true);
-         });
-       }, []);
+/* Pop-in */
+function PopInOption({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
 
-       return (
-         <div
-           className={[
-             mounted ? "animate-[popInBounce_0.6s_ease-out_forwards]" : "scale-[2.5] opacity-0",
-           ].join(" ")}
-         >
-           {children}
-         </div>
-       );
-     }
-     
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      setMounted(true);
+    });
+  }, []);
 
-/* -------------------------------------------
-   CloudPill — mobile-first
--------------------------------------------- */
+  return (
+    <div
+      className={
+        mounted
+          ? "animate-[popInBounce_0.6s_ease-out_forwards]"
+          : "scale-[2.5] opacity-0"
+      }
+    >
+      {children}
+    </div>
+  );
+}
+
+/* Cloud pill */
 function CloudPill({
   option,
   onClick,
   status = "idle",
   disabled = false,
   isSpeaking = false,
+  selectedLanguage,
 }: {
-  option: { text: string; imageUrl?: string };
+  option: Option;
   onClick: () => void;
   status?: OptionStatus;
   disabled?: boolean;
   isSpeaking?: boolean;
+  selectedLanguage: LangCode;
 }): ReactNode {
   const [imageError, setImageError] = useState(false);
 
   const isCorrect = status === "correct";
   const isWrong = status === "wrong";
-  const hasImage = option.imageUrl && !imageError;
+  const hasImage = !!option.imageUrl && !imageError;
+
+  const label =
+    option.text[selectedLanguage] ?? option.text.en ?? "";
 
   const base =
     "group relative rounded-[1.5rem] px-2 py-1.5 text-[0.95rem] font-semibold border shadow-xl drop-shadow-md transition-all active:scale-[0.98] w-full max-w-full text-center supports-[hover:hover]:hover:scale-[1.03] md:rounded-[2rem] md:px-4 md:py-2 md:text-base md:w-fit md:min-w-[100px] lg:px-5 lg:py-3 lg:text-lg lg:w-fit lg:min-w-[120px] overflow-hidden";
 
-  const imageButtonBase = base + " md:min-h-[100px] lg:min-h-[120px]";
-
-  const idleCls = "bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white border-white/60 dark:border-slate-700";
+  const idleCls =
+    "bg-white/95 dark:bg-slate-900/95 text-slate-900 dark:text-white border-white/60 dark:border-slate-700";
   const okCls = "bg-green-500/90 text-white border-green-600";
   const badRealCls = "bg-red-500/90 text-white border-red-600";
 
@@ -95,7 +109,7 @@ function CloudPill({
         <div className="mb-2">
           <img
             src={option.imageUrl}
-            alt={option.text}
+            alt={label}
             className="w-28 h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 rounded-lg object-cover border-2 border-white/60 dark:border-slate-700 shadow-md"
             onError={() => setImageError(true)}
           />
@@ -120,17 +134,13 @@ function CloudPill({
             <span className="hidden md:block absolute -right-2.5 top-1.5 w-3 h-3 rounded-full bg-white/95 dark:bg-slate-900/95 border border-white/60 dark:border-slate-700" />
           </>
         )}
-        <span className="truncate text-xs mt-1">
-          {option.text}
-        </span>
+        <span className="truncate text-xs mt-1">{label}</span>
       </button>
     </div>
   );
 }
 
-/* -------------------------------------------
-   CloudsOverlay
--------------------------------------------- */
+/* CloudsOverlay */
 function CloudsOverlay({
   options,
   onPick,
@@ -140,27 +150,25 @@ function CloudsOverlay({
   visibleCount,
   currentSpeakingIndex,
   currentVisibleIndex,
+  selectedLanguage,
 }: {
-  options: { text: string; imageUrl?: string }[];
-  onPick: (opt: { text: string; imageUrl?: string }, idx: number) => void;
+  options: Option[];
+  onPick: (opt: Option, idx: number) => void;
   visible: boolean;
   statuses: OptionStatus[];
   locked: boolean;
   visibleCount: number;
   currentSpeakingIndex: number | null;
   currentVisibleIndex: number | null;
+  selectedLanguage: LangCode;
 }) {
   const { left, right } = useMemo(() => splitSides(options), [options]);
   if (!visible || options.length === 0) return null;
 
-  const MOBILE_BOTTOM_OFFSET = 165;
-  const bottomSafe = `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_OFFSET}px)`;
-
   return (
     <div className="pointer-events-none absolute inset-0 z-20" aria-hidden>
-      {/* Phones: floating clouds */}
+      {/* Mobile */}
       <div className="md:hidden absolute inset-0 z-20" aria-hidden>
-        {/* LEFT stack for mobile */}
         <div
           className={[
             "absolute pointer-events-auto flex flex-col items-end",
@@ -170,9 +178,14 @@ function CloudsOverlay({
             "max-w-[150px]",
           ].join(" ")}
         >
-          {left.map((opt, idx) => {
+          {left.map((opt: Option, idx: number) => {
             const realIndex = idx * 2;
-            if (currentVisibleIndex !== null ? realIndex !== currentVisibleIndex : realIndex >= visibleCount) return null;
+            if (
+              currentVisibleIndex !== null
+                ? realIndex !== currentVisibleIndex
+                : realIndex >= visibleCount
+            )
+              return null;
             return (
               <div
                 key={`M-L-${idx}-${visibleCount}`}
@@ -182,19 +195,19 @@ function CloudsOverlay({
                   transform: `translateY(${idx * 2}px)`,
                 }}
               >
-                  <CloudPill
-                    option={opt}
-                    status={statuses[realIndex] ?? "idle"}
-                    disabled={locked}
-                    onClick={() => !locked && onPick(opt, realIndex)}
-                    isSpeaking={currentSpeakingIndex === realIndex}
-                  />
+                <CloudPill
+                  option={opt}
+                  status={statuses[realIndex] ?? "idle"}
+                  disabled={locked}
+                  onClick={() => !locked && onPick(opt, realIndex)}
+                  isSpeaking={currentSpeakingIndex === realIndex}
+                  selectedLanguage={selectedLanguage}
+                />
               </div>
             );
           })}
         </div>
 
-        {/* RIGHT stack for mobile */}
         <div
           className={[
             "absolute pointer-events-auto flex flex-col items-start",
@@ -204,9 +217,14 @@ function CloudsOverlay({
             "max-w-[150px]",
           ].join(" ")}
         >
-          {right.map((opt, idx) => {
+          {right.map((opt: Option, idx: number) => {
             const realIndex = idx * 2 + 1;
-            if (currentVisibleIndex !== null ? realIndex !== currentVisibleIndex : realIndex >= visibleCount) return null;
+            if (
+              currentVisibleIndex !== null
+                ? realIndex !== currentVisibleIndex
+                : realIndex >= visibleCount
+            )
+              return null;
             return (
               <div
                 key={`M-R-${idx}-${visibleCount}`}
@@ -223,6 +241,7 @@ function CloudsOverlay({
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
                     isSpeaking={currentSpeakingIndex === realIndex}
+                    selectedLanguage={selectedLanguage}
                   />
                 </PopInOption>
               </div>
@@ -231,9 +250,8 @@ function CloudsOverlay({
         </div>
       </div>
 
-      {/* Tablet/Desktop: anchor near avatar but further apart */}
+      {/* Desktop */}
       <div className="hidden md:block">
-        {/* LEFT stack */}
         <div
           className={[
             "absolute pointer-events-auto flex flex-col items-end",
@@ -243,9 +261,14 @@ function CloudsOverlay({
             "max-w-[300px] md:max-w-[320px]",
           ].join(" ")}
         >
-          {left.map((opt, idx) => {
+          {left.map((opt: Option, idx: number) => {
             const realIndex = idx * 2;
-            if (currentVisibleIndex !== null ? realIndex !== currentVisibleIndex : realIndex >= visibleCount) return null;
+            if (
+              currentVisibleIndex !== null
+                ? realIndex !== currentVisibleIndex
+                : realIndex >= visibleCount
+            )
+              return null;
             return (
               <div
                 key={`L-${idx}-${visibleCount}`}
@@ -262,6 +285,7 @@ function CloudsOverlay({
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
                     isSpeaking={currentSpeakingIndex === realIndex}
+                    selectedLanguage={selectedLanguage}
                   />
                 </PopInOption>
               </div>
@@ -269,7 +293,6 @@ function CloudsOverlay({
           })}
         </div>
 
-        {/* RIGHT stack */}
         <div
           className={[
             "absolute pointer-events-auto flex flex-col items-start",
@@ -279,9 +302,14 @@ function CloudsOverlay({
             "max-w-[300px] md:max-w-[320px]",
           ].join(" ")}
         >
-          {right.map((opt, idx) => {
+          {right.map((opt: Option, idx: number) => {
             const realIndex = idx * 2 + 1;
-            if (currentVisibleIndex !== null ? realIndex !== currentVisibleIndex : realIndex >= visibleCount) return null;
+            if (
+              currentVisibleIndex !== null
+                ? realIndex !== currentVisibleIndex
+                : realIndex >= visibleCount
+            )
+              return null;
             return (
               <div
                 key={`R-${idx}-${visibleCount}`}
@@ -298,6 +326,7 @@ function CloudsOverlay({
                     disabled={locked}
                     onClick={() => !locked && onPick(opt, realIndex)}
                     isSpeaking={currentSpeakingIndex === realIndex}
+                    selectedLanguage={selectedLanguage}
                   />
                 </PopInOption>
               </div>
@@ -309,21 +338,21 @@ function CloudsOverlay({
   );
 }
 
-/* -------------------------------------------
-   Main runner
--------------------------------------------- */
+/* Main runner */
 export default function ScenarioRunner({
   scenarioKey,
   setCaption,
   setSpokenScript,
   selectedChildId,
   isSpeaking,
+  selectedLanguage,
 }: {
   scenarioKey: keyof typeof SCENARIOS;
   setCaption: (q: string) => void;
   setSpokenScript: (s: string) => void;
   selectedChildId?: string | null;
   isSpeaking: boolean;
+  selectedLanguage: LangCode;
 }) {
   const scenario = useMemo(
     () => getScenarioWithShuffledOptions(scenarioKey),
@@ -333,7 +362,23 @@ export default function ScenarioRunner({
   const { meta, addTurn } = useSession();
 
   const [ownerId, setOwnerId] = useState<string | null>(null);
-  const [childId, setChildId] = useState<string | null>(selectedChildId ?? null);
+  const [childId, setChildId] = useState<string | null>(
+    selectedChildId ?? null
+  );
+
+  const blocks: BlockLocal[] = useMemo(() => {
+    const allQs = scenario.questions;
+    const result: BlockLocal[] = [];
+    const blockSize = 3;
+
+    for (let i = 0; i < allQs.length; i += blockSize) {
+      result.push({
+        title: `Block ${Math.floor(i / blockSize) + 1}`,
+        questions: allQs.slice(i, i + blockSize),
+      });
+    }
+    return result;
+  }, [scenario]);
 
   const [blockIdx, setBlockIdx] = useState(0);
   const [maxBlockIdx, setMaxBlockIdx] = useState(0);
@@ -342,19 +387,24 @@ export default function ScenarioRunner({
   const [totalStars, setTotalStars] = useState(0);
 
   const [showOptions, setShowOptions] = useState(false);
-
-  // UI feedback + progressive reveal
   const [optionStatuses, setOptionStatuses] = useState<OptionStatus[]>([]);
   const [locked, setLocked] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
-  const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
-  const [currentVisibleIndex, setCurrentVisibleIndex] = useState<number | null>(null);
+  const [currentSpeakingIndex, setCurrentSpeakingIndex] =
+    useState<number | null>(null);
+  const [currentVisibleIndex, setCurrentVisibleIndex] =
+    useState<number | null>(null);
 
-  const block = scenario.blocks[blockIdx];
-  const questions = block.questions.slice(0, 3);
-  const q = questions[qIdx];
+  const block = blocks[blockIdx];
+  const questions: Q[] = block?.questions.slice(0, 3) ?? [];
+  const q: Q | undefined = questions[qIdx];
 
-  /* auth owner */
+  const langCodes: Record<LangCode, string> = {
+    en: "en-IN",
+    hi: "hi-IN",
+    pa: "pa-IN",
+  };
+
   useEffect(() => {
     (async () => {
       const {
@@ -364,12 +414,12 @@ export default function ScenarioRunner({
     })();
   }, [sb]);
 
-  /* react to selected child change */
   useEffect(() => {
-    if (selectedChildId !== undefined) setChildId(selectedChildId ?? null);
+    if (selectedChildId !== undefined) {
+      setChildId(selectedChildId ?? null);
+    }
   }, [selectedChildId]);
 
-  /* ✅ resume progress: highest PASSED block from scenario_block_attempts */
   useEffect(() => {
     (async () => {
       if (!ownerId) return;
@@ -396,17 +446,22 @@ export default function ScenarioRunner({
       }
 
       let highestPassed = -1;
-      for (const row of data) {
+      for (const row of data as {
+        block_index: number | null;
+        passed: boolean;
+      }[]) {
         if (row.passed) {
-          highestPassed = Math.max(highestPassed, row.block_index ?? 0);
+          highestPassed = Math.max(
+            highestPassed,
+            row.block_index ?? 0
+          );
         }
       }
 
+      const maxBlockIndex = Math.max(blocks.length - 1, 0);
+
       if (highestPassed >= 0) {
-        const startBlock = Math.min(
-          highestPassed + 1,
-          scenario.blocks.length - 1
-        );
+        const startBlock = Math.min(highestPassed + 1, maxBlockIndex);
         setBlockIdx(startBlock);
         setMaxBlockIdx(startBlock);
       } else {
@@ -415,23 +470,30 @@ export default function ScenarioRunner({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId, scenarioKey, childId]);
+  }, [ownerId, scenarioKey, childId, blocks.length]);
 
-  /* reset per-question UI */
   useEffect(() => {
+    if (!q) return;
     setOptionStatuses(Array(q.options.length).fill("idle"));
     setLocked(false);
     setVisibleCount(0);
     setShowOptions(false);
-  }, [blockIdx, qIdx, q.options.length]);
+  }, [blockIdx, qIdx, q?.options.length]);
 
-  /* Speak question + then options one by one */
   useEffect(() => {
+    if (!q) return;
     let cancelled = false;
 
     const runSpeech = async () => {
-      const prompt = q.prompt;
-      const optionTexts = q.options.map((opt) => removeEmojiRough(opt.text));
+      const promptRaw =
+        q.prompt[selectedLanguage] ?? q.prompt.en ?? "";
+      const prompt = removeEmojiRough(promptRaw);
+
+      const optionTexts = q.options.map((opt: Option) => {
+        const raw =
+          opt.text[selectedLanguage] ?? opt.text.en ?? "";
+        return removeEmojiRough(raw);
+      });
 
       setCaption(prompt);
 
@@ -444,8 +506,10 @@ export default function ScenarioRunner({
       stopSpeech();
 
       try {
-        // slow question
-        await speakInBrowser(prompt, { rate: 0.60 });
+        await speakInBrowser(prompt, {
+          rate: 0.6,
+          lang: langCodes[selectedLanguage],
+        });
       } catch {}
 
       if (cancelled) return;
@@ -456,27 +520,28 @@ export default function ScenarioRunner({
         if (cancelled) break;
 
         if (i > 0) {
-          // Hide previous option before showing next
           setVisibleCount(0);
           setCurrentVisibleIndex(null);
           setCurrentSpeakingIndex(null);
-          await new Promise(resolve => setTimeout(resolve, 50));
+          await new Promise((resolve) => setTimeout(resolve, 50));
         }
 
-        setVisibleCount(1); // Show only one option
+        setVisibleCount(1);
         setCurrentVisibleIndex(i);
         setCurrentSpeakingIndex(i);
 
         try {
-          // slow options
-          await speakInBrowser(optionTexts[i], { rate: 0.70 });
+          await speakInBrowser(optionTexts[i], {
+            rate: 0.7,
+            lang: langCodes[selectedLanguage],
+          });
         } catch {}
 
         if (cancelled) break;
       }
       setCurrentSpeakingIndex(null);
       setCurrentVisibleIndex(null);
-      setVisibleCount(optionTexts.length); // Show all options after speaking
+      setVisibleCount(optionTexts.length);
     };
 
     runSpeech();
@@ -486,10 +551,12 @@ export default function ScenarioRunner({
       stopSpeech();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockIdx, qIdx, scenarioKey]);
+  }, [blockIdx, qIdx, scenarioKey, selectedLanguage]);
 
-  /* save (upsert) scenario_progress - highest block only */
-  const saveProgress = async (highestBlock: number, newTotal: number) => {
+  const saveProgress = async (
+    highestBlock: number,
+    newTotal: number
+  ) => {
     if (!ownerId) return;
 
     await sb.from("scenario_progress").upsert(
@@ -505,7 +572,6 @@ export default function ScenarioRunner({
     );
   };
 
-  /* audit block attempt */
   const insertBlockAttempt = async (
     blockIndex: number,
     stars: number,
@@ -515,7 +581,9 @@ export default function ScenarioRunner({
     if (!ownerId) return;
     await sb.from("scenario_block_attempts").insert({
       owner_id: ownerId,
-      session_id: /^[0-9a-f-]{36}$/i.test(meta.sessionId) ? meta.sessionId : null,
+      session_id: /^[0-9a-f-]{36}$/i.test(meta.sessionId)
+        ? meta.sessionId
+        : null,
       child_id: childId ?? null,
       scenario_key: scenarioKey,
       block_index: blockIndex,
@@ -525,7 +593,6 @@ export default function ScenarioRunner({
     });
   };
 
-  /* per-question attempt */
   const insertQuestionAttempt = async ({
     questionIndex,
     optionIndex,
@@ -545,7 +612,9 @@ export default function ScenarioRunner({
     await sb.from("scenario_question_attempts").insert({
       owner_id: ownerId,
       child_id: childId ?? null,
-      session_id: /^[0-9a-f-]{36}$/i.test(meta.sessionId) ? meta.sessionId : null,
+      session_id: /^[0-9a-f-]{36}$/i.test(meta.sessionId)
+        ? meta.sessionId
+        : null,
       scenario_key: scenarioKey,
       block_index: blockIdx,
       question_index: questionIndex,
@@ -557,26 +626,37 @@ export default function ScenarioRunner({
     });
   };
 
-  /* child picked an option */
-  const handlePick = async (opt: { text: string; imageUrl?: string }, optIndex: number) => {
-    if (locked) return;
+  const handlePick = async (opt: Option, optIndex: number) => {
+    if (locked || !q || !block) return;
     setLocked(true);
 
     stopSpeech();
 
-    addTurn({ speaker: "child", text: opt.text });
+    const spokenText =
+      opt.text[selectedLanguage] ?? opt.text.en ?? "";
+    addTurn({ speaker: "child", text: spokenText });
     if (/^[0-9a-f-]{36}$/i.test(meta.sessionId)) {
-      persistTurn(meta.sessionId, { speaker: "child", text: opt.text }).catch(
-        () => {}
-      );
+      persistTurn(meta.sessionId, {
+        speaker: "child",
+        text: spokenText,
+      }).catch(() => {});
     }
 
     const qNow = questions[qIdx];
     const isCorrect = optIndex === qNow.correctIndex;
 
-    const questionText = qNow.prompt;
-    const chosenText = qNow.options[optIndex]?.text ?? opt.text;
-    const correctText = qNow.options[qNow.correctIndex]?.text;
+    const questionText =
+      qNow.prompt[selectedLanguage] ?? qNow.prompt.en ?? "";
+
+    const chosenText =
+      qNow.options[optIndex]?.text[selectedLanguage] ??
+      qNow.options[optIndex]?.text.en ??
+      spokenText;
+
+    const correctText =
+      qNow.options[qNow.correctIndex]?.text[selectedLanguage] ??
+      qNow.options[qNow.correctIndex]?.text.en ??
+      "";
 
     setOptionStatuses((prev) =>
       prev.map((s, i) =>
@@ -603,7 +683,7 @@ export default function ScenarioRunner({
 
     await new Promise((r) => setTimeout(r, 350));
 
-    if (qIdx < 2) {
+    if (qIdx < 2 && qIdx < questions.length - 1) {
       setQIdx((i) => i + 1);
       return;
     }
@@ -627,8 +707,9 @@ export default function ScenarioRunner({
       answersCorrect + (isCorrect ? 1 : 0)
     );
 
+    const lastBlockIndex = blocks.length - 1;
     const rawNext = passed
-      ? Math.min(blockIdx + 1, scenario.blocks.length - 1)
+      ? Math.min(blockIdx + 1, lastBlockIndex)
       : blockIdx;
 
     const newMaxBlock = Math.max(maxBlockIdx, rawNext);
@@ -652,12 +733,13 @@ export default function ScenarioRunner({
     setLocked(false);
     setVisibleCount(0);
     stopSpeech();
-    saveProgress(0, 0);
+    void saveProgress(0, 0);
   };
+
+  if (!block || !q) return null;
 
   return (
     <>
-      {/* HUD (top-right) */}
       <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30 flex flex-wrap items-center gap-1 sm:gap-2">
         <Badge
           variant="outline"
@@ -666,7 +748,7 @@ export default function ScenarioRunner({
           {scenario.title}
         </Badge>
         <Badge variant="outline" className="text-xs sm:text-sm">
-          Block {blockIdx + 1}/{scenario.blocks.length}
+          Block {blockIdx + 1}/{blocks.length || 1}
         </Badge>
         <div className="inline-flex items-center gap-1 text-amber-500 text-xs sm:text-sm font-medium">
           <Star size={16} /> {totalStars}
@@ -681,7 +763,6 @@ export default function ScenarioRunner({
         </Button>
       </div>
 
-      {/* Floating answer options */}
       <CloudsOverlay
         options={q.options}
         visible={showOptions}
@@ -691,6 +772,7 @@ export default function ScenarioRunner({
         visibleCount={visibleCount}
         currentSpeakingIndex={currentSpeakingIndex}
         currentVisibleIndex={currentVisibleIndex}
+        selectedLanguage={selectedLanguage}
       />
     </>
   );

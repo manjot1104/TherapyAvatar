@@ -1,10 +1,9 @@
-# TODO: Replace Option Text with Images
+# Language Selection Dropdown Implementation
 
-## Steps to Complete
-- [x] Update Q type in scenarios.ts to include imageUrl in options (already done)
-- [ ] Add imageUrl to all options in all scenarios (use placeholders)
-- [ ] Update shuffleQuestion function to handle new option structure
-- [ ] Modify CloudPill in ScenarioRunner.tsx to display images instead of text
-- [ ] Ensure speaking still uses text
-- [ ] Add placeholder images to public/images/
-- [ ] Test the changes in the app
+## Tasks
+- [ ] Add language state to TherapyMainPage component
+- [ ] Create language dropdown UI component in therapy page
+- [ ] Modify ScenarioRunner to accept language prop
+- [ ] Update ScenarioRunner to use selected language for prompts and options
+- [ ] Update speakInBrowser calls to use selected language
+- [ ] Test language switching functionality

@@ -187,7 +187,7 @@ export default async function ChildProgressPage(props: any) {
   const overallCorrect = attempts.filter((a) => a.is_correct).length;
 
   return (
-    <div className="min-h-[85vh] w-full bg-gradient-to-br from-sky-50 via-white to-indigo-50 dark:from-zinc-900 dark:via-zinc-950 dark:to-black">
+    <div className="min-h-[85vh] w-full bg-linear-to-br from-sky-50 via-white to-indigo-50 dark:from-zinc-900 dark:via-zinc-950 dark:to-black">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -216,7 +216,7 @@ export default async function ChildProgressPage(props: any) {
 
         {/* Child meta + quick stats */}
         <section className="relative rounded-3xl border border-black/5 dark:border-white/10 bg-white/75 dark:bg-zinc-900/60 shadow-xl backdrop-blur">
-          <div className="absolute inset-x-0 -top-px h-1 rounded-t-3xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+          <div className="absolute inset-x-0 -top-px h-1 rounded-t-3xl bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500" />
           <div className="p-6 sm:p-8 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <MetaItem

@@ -216,16 +216,14 @@ export async function speakInBrowser(
     pitch?: number;
     lang?: string;
     voiceName?: string;
-    mood?: Mood; // 👈 NEW: avatar mood
+    mood?: Mood;
   }
 ): Promise<void> {
   if (!isBrowser()) throw new Error("Web Speech not supported");
   const t = (text || "").trim();
   if (!t) return;
 
-  // 🔒 iOS unlock: wait until first tap/click
   await ensureSpeechUnlocked();
-
   await waitForVoices();
   await waitForAvatar();
 
@@ -330,16 +328,13 @@ export async function speakInBrowser(
       continue;
     }
 
-    // default mouth shape
     push(ROUND, 0.60);
     time += charMs;
   }
 
   const timelineEndMs = timeline.length ? timeline[timeline.length - 1].time : 0;
-
   const mood: Mood = opts?.mood ?? "neutral";
 
-  // Pre-speech mood (e.g. set happy/sad face before speaking)
   setAvatarMood(mood, "pre");
 
   return new Promise<void>((resolve) => {
@@ -357,23 +352,44 @@ export async function speakInBrowser(
     const u = new SpeechSynthesisUtterance(t);
     u.rate = rate;
     u.pitch = opts?.pitch ?? 1.0;
-    u.lang = opts?.lang ?? "en-IN";
 
     const voices = synth.getVoices();
     let v: SpeechSynthesisVoice | undefined;
 
+    // 1) explicit voiceName
     if (opts?.voiceName) {
       v = voices.find((x) => x.name === opts.voiceName);
     }
+
+    // 2) try to match language (hi-IN / pa-IN etc.)
+    if (!v && opts?.lang) {
+      const target = opts.lang.toLowerCase();
+      const primary = target.split("-")[0];
+      v =
+        voices.find((x) => x.lang.toLowerCase().startsWith(target)) ||
+        voices.find((x) => x.lang.toLowerCase().startsWith(primary));
+    }
+
+    // 3) fallback: nice English voice
     if (!v) {
       v = voices.find(
-        (x) => /en[-_]US/i.test(x.lang) && /Google|Microsoft|Samantha|Daniel/.test(x.name)
+        (x) =>
+          /en[-_]US/i.test(x.lang) &&
+          /Google|Microsoft|Samantha|Daniel/.test(x.name)
       );
     }
     if (!v) {
       v = voices.find((x) => /en/i.test(x.lang));
     }
-    if (v) u.voice = v;
+
+    // ✅ FINAL: lang ALWAYS matches voice.lang when we have a voice
+    if (v) {
+      u.voice = v;
+      u.lang = v.lang;
+    } else {
+      // agar koi voice hi nahi mili, tab hi opts.lang ya default
+      u.lang = opts?.lang ?? "en-IN";
+    }
 
     let fillerInt: any = null;
     let rafId: number | null = null;
@@ -402,8 +418,6 @@ export async function speakInBrowser(
 
     u.onstart = () => {
       startedAt = performance.now();
-
-      // Gesture + mood during speech
       avatarTalkStart();
       setAvatarMood(mood, "during");
 
@@ -425,7 +439,6 @@ export async function speakInBrowser(
       getAvatar()?.playVisemes?.([]);
       speakingLock = false;
 
-      // Stop gesture + go back to neutral
       avatarTalkStop();
       setAvatarMood("neutral", "after");
     };

@@ -60,7 +60,6 @@ export default async function ChildProgressPage(props: any) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return <div className="p-6">Please sign in.</div>;
 
   const childId = await resolveId(props?.params);
 
@@ -89,45 +88,51 @@ export default async function ChildProgressPage(props: any) {
   }
 
   // ---- Fetch attempts ----
-  const { data: attemptsRaw } = await supabase
-    .from("scenario_question_attempts")
-    .select(
-      [
-        "session_id",
-        "created_at",
-        "scenario_key",
-        "block_index",
-        "question_index",
-        "option_index",
-        "is_correct",
-        // NEW FIELDS
-        "question_text",
-        "chosen_option_text",
-        "correct_option_text",
-      ].join(",")
-    )
-    .eq("owner_id", user.id)
-    .or(`child_id.eq.${childId},child_id.is.null`)
-    .order("created_at", { ascending: false });
+  const { data: attemptsRaw } = user
+    ? await supabase
+        .from("scenario_question_attempts")
+        .select(
+          [
+            "session_id",
+            "created_at",
+            "scenario_key",
+            "block_index",
+            "question_index",
+            "option_index",
+            "is_correct",
+            // NEW FIELDS
+            "question_text",
+            "chosen_option_text",
+            "correct_option_text",
+          ].join(",")
+        )
+        .eq("owner_id", user.id)
+        .or(`child_id.eq.${childId},child_id.is.null`)
+        .order("created_at", { ascending: false })
+    : { data: null };
 
   const attempts: Attempt[] = (attemptsRaw as Attempt[]) ?? [];
 
-  const { data: blockAttemptsRaw } = await supabase
-    .from("scenario_block_attempts")
-    .select(
-      "session_id, created_at, scenario_key, block_index, stars_earned, answers_correct, passed"
-    )
-    .eq("owner_id", user.id)
-    .or(`child_id.eq.${childId},child_id.is.null`)
-    .order("created_at", { ascending: false });
+  const { data: blockAttemptsRaw } = user
+    ? await supabase
+        .from("scenario_block_attempts")
+        .select(
+          "session_id, created_at, scenario_key, block_index, stars_earned, answers_correct, passed"
+        )
+        .eq("owner_id", user.id)
+        .or(`child_id.eq.${childId},child_id.is.null`)
+        .order("created_at", { ascending: false })
+    : { data: null };
 
   const blockAttempts: BlockAttempt[] = (blockAttemptsRaw as BlockAttempt[]) ?? [];
 
-  const { data: progressRows } = await supabase
-    .from("scenario_progress")
-    .select("total_points")
-    .eq("owner_id", user.id)
-    .eq("child_id", childId);
+  const { data: progressRows } = user
+    ? await supabase
+        .from("scenario_progress")
+        .select("total_points")
+        .eq("owner_id", user.id)
+        .eq("child_id", childId)
+    : { data: null };
 
   const totalPoints =
     progressRows?.reduce((sum, r: any) => sum + (r.total_points ?? 0), 0) ?? 0;

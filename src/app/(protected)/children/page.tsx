@@ -49,7 +49,6 @@ async function getData() {
 
 export default async function ChildrenPage() {
   const { user, children } = await getData();
-  if (!user) return <div className="p-6">Please sign in.</div>;
 
   // Server Action: create child then redirect to Progress page
   async function createChild(formData: FormData) {

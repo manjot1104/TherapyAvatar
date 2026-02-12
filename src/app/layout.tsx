@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "Global Child Wellness — Therapy Avatar",
-  description: "Secure sign-in, profile, and therapy tools powered by Supabase + Next.js.",
+  description: "Profile and therapy tools powered by Supabase + Next.js.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

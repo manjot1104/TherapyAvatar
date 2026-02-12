@@ -37,11 +37,3 @@ export async function respond(text: string, kbHint?: string, module?: string) {
   });
 }
 
-/* ---------------- signup ---------------- */
-export async function signup(payload: any) {
-  // payload: { email, password, ... } jo bhi tum backend expect karte ho
-  return request<any>("/signup", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}

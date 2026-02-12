@@ -17,38 +17,30 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Guard (shouldn’t happen if route is protected)
-  if (!user) {
-    return (
-      <div className="min-h-[85vh] grid place-items-center">
-        <Link
-          href="/sign-in"
-          className="rounded-xl bg-indigo-600 px-4 py-2 text-white"
-        >
-          Sign in
-        </Link>
-      </div>
-    );
-  }
-
   // ------- Quick server stats -------
-  const { count: childrenCount } = await supabase
-    .from("children")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
+  const { count: childrenCount } = user
+    ? await supabase
+        .from("children")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+    : { count: 0 };
 
-  const { count: sessionCount } = await supabase
-    .from("sessions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
+  const { count: sessionCount } = user
+    ? await supabase
+        .from("sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+    : { count: 0 };
 
-  const { data: lastSessionRow } = await supabase
-    .from("sessions")
-    .select("created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: lastSessionRow } = user
+    ? await supabase
+        .from("sessions")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
 
   const lastSessionText = lastSessionRow
     ? new Date(lastSessionRow.created_at).toLocaleString()
@@ -64,9 +56,11 @@ export default async function DashboardPage() {
               <Sparkles className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
               Dashboard
             </h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Welcome, <span className="font-medium">{user.email}</span>
-            </p>
+            {user?.email && (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Welcome, <span className="font-medium">{user.email}</span>
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -190,7 +184,6 @@ export default async function DashboardPage() {
                   </>
                 ),
               },
-              { text: "Use the header’s Sign out button to securely exit." },
             ]}
           />
           <InfoCard

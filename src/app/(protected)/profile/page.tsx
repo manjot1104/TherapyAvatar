@@ -2,8 +2,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/browser-client";
-import { signOutAction } from "@/app/actions/auth";
-import { User as UserIcon, Loader2, LogOut, CheckCircle2 } from "lucide-react";
+import { User as UserIcon, Loader2, CheckCircle2 } from "lucide-react";
 
 type Profile = { full_name: string | null };
 
@@ -19,14 +18,15 @@ export default function ProfilePage() {
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { window.location.href = "/login"; return; }
-      setEmail(user.email ?? null);
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (data) setProfile(data);
+      setEmail(user?.email ?? null);
+      if (user) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (data) setProfile(data);
+      }
       setLoading(false);
     })();
   }, [supabase]);
@@ -65,21 +65,12 @@ export default function ProfilePage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Your Profile</h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Signed in as <b>{email}</b>
-            </p>
+            {email && (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <b>{email}</b>
+              </p>
+            )}
           </div>
-
-          {/* server action sign out */}
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white/80 px-4 py-2 text-sm font-medium shadow-sm hover:bg-white active:scale-[0.99] dark:border-zinc-800 dark:bg-zinc-900/60"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
-          </form>
         </div>
 
         {/* Card */}

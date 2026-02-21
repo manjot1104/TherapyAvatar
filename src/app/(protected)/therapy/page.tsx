@@ -20,6 +20,7 @@ import { createClient } from "@/lib/supabase/browser-client";
 import ScenarioRunner from "@/components/ScenarioRunner";
 import { SCENARIOS } from "@/data/scenarios";
 import { speakInBrowser, stopSpeech } from "@/lib/speak";
+import { sharedAudioPlayer } from "speech-to-speech";
 
 const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), {
   ssr: false,
@@ -83,14 +84,16 @@ export default function TherapyMainPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // poll speech synthesis speaking state
+  // poll TTS speaking state
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (
-        typeof window !== "undefined" &&
-        window.speechSynthesis
-      ) {
-        setIsSpeaking(window.speechSynthesis.speaking);
+    const interval = setInterval(async () => {
+      if (typeof window !== "undefined") {
+        try {
+          const { sharedAudioPlayer } = await import("speech-to-speech");
+          setIsSpeaking(sharedAudioPlayer.isAudioPlaying());
+        } catch {
+          setIsSpeaking(false);
+        }
       }
     }, 100);
     return () => clearInterval(interval);

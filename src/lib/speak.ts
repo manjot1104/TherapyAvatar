@@ -1,34 +1,105 @@
 // src/lib/speak.ts
+// Piper TTS implementation with avatar viseme support
 
+// Types will be inferred from dynamic imports
+type TTSLogic = any;
+type SharedAudioPlayer = any;
+
+let ttsInstance: TTSLogic | null = null;
+let ttsInitialized = false;
+let initPromise: Promise<void> | null = null;
 let speakingLock = false;
+let audioPlayerConfigured = false;
 
-/* ========= Small helpers ========= */
+/* ========= Browser check ========= */
 
 function isBrowser(): boolean {
-  return typeof window !== "undefined" && typeof window.speechSynthesis !== "undefined";
+  return typeof window !== "undefined";
 }
 
-function waitForVoices(timeoutMs = 2000): Promise<void> {
-  if (!isBrowser()) return Promise.resolve();
+/* ========= TTS Initialization ========= */
 
-  return new Promise((resolve) => {
-    const synth = window.speechSynthesis;
-    const have = () => synth.getVoices().length > 0;
-    if (have()) return resolve();
+/**
+ * Initialize TTS with appropriate voice based on language
+ */
+async function initializeTTS(lang?: string): Promise<any> {
+  if (ttsInstance && ttsInitialized) {
+    return ttsInstance;
+  }
 
-    const t = setTimeout(() => resolve(), timeoutMs);
+  if (initPromise) {
+    await initPromise;
+    return ttsInstance!;
+  }
 
-    const handler = () => {
-      if (have()) {
-        clearTimeout(t);
-        synth.removeEventListener("voiceschanged", handler);
-        resolve();
+  initPromise = (async () => {
+    if (!isBrowser()) {
+      throw new Error("TTS only works in browser");
+    }
+
+    // Dynamic import to avoid SSR issues
+    const { TTSLogic, sharedAudioPlayer: audioPlayer } = await import("speech-to-speech");
+
+    // Configure shared audio player only once
+    if (!audioPlayerConfigured) {
+      try {
+        audioPlayer.configure({
+          autoPlay: true,
+          sampleRate: 22050,
+          volume: 1.0,
+        });
+        audioPlayerConfigured = true;
+      } catch (error: any) {
+        // If already configured, try to reset first
+        if (error?.message?.includes("already initialized")) {
+          try {
+            (audioPlayer as any).reset?.();
+            audioPlayer.configure({
+              autoPlay: true,
+              sampleRate: 22050,
+              volume: 1.0,
+            });
+            audioPlayerConfigured = true;
+          } catch {
+            // Ignore - assume it's already configured correctly
+            audioPlayerConfigured = true;
+          }
+        } else {
+          // Assume configured if error
+          audioPlayerConfigured = true;
+        }
       }
+    }
+
+    // Map language codes to Piper voice IDs
+    const voiceMap: Record<string, string> = {
+      "en": "en_US-hfc_female-medium",
+      "en-US": "en_US-hfc_female-medium",
+      "en-IN": "en_US-hfc_female-medium",
+      "en-GB": "en_GB-alba-medium",
+      "hi": "en_US-hfc_female-medium", // Fallback to English for now
+      "hi-IN": "en_US-hfc_female-medium",
+      "pa": "en_US-hfc_female-medium", // Fallback to English for now
+      "pa-IN": "en_US-hfc_female-medium",
     };
 
-    synth.addEventListener("voiceschanged", handler);
-  });
+    const langCode = lang?.toLowerCase().split("-")[0] || "en";
+    const voiceId = voiceMap[langCode] || voiceMap[lang || ""] || "en_US-hfc_female-medium";
+
+    ttsInstance = new TTSLogic({
+      voiceId,
+      warmUp: true,
+    });
+
+    await ttsInstance.initialize();
+    ttsInitialized = true;
+  })();
+
+  await initPromise;
+  return ttsInstance!;
 }
+
+/* ========= Avatar helpers ========= */
 
 async function waitForAvatar(timeoutMs = 4000): Promise<any> {
   if (!isBrowser()) return null;
@@ -45,8 +116,6 @@ async function waitForAvatar(timeoutMs = 4000): Promise<any> {
   });
 }
 
-/* ========= Avatar helpers (expressions + gestures) ========= */
-
 type Mood = "neutral" | "happy" | "sad" | "angry" | "excited";
 
 function getAvatar(): any | null {
@@ -54,29 +123,20 @@ function getAvatar(): any | null {
   return (window as any).__AVATAR__ || null;
 }
 
-/**
- * Try to set avatar mood using:
- * 1) A.setMood(mood, phase) if provided
- * 2) A.setExpression(mood, value) if provided
- * 3) Fallback: use setWeight + _has with common VRM/preset keys
- */
 function setAvatarMood(mood: Mood, phase: "pre" | "during" | "after" = "during") {
   const A = getAvatar();
   if (!A) return;
 
-  // If avatar has its own mood handler, prefer that.
   if (typeof A.setMood === "function") {
     A.setMood(mood, phase);
     return;
   }
 
-  // If avatar exposes a generic expression API
   if (typeof A.setExpression === "function") {
     A.setExpression(mood, phase === "after" ? 0 : 1);
     return;
   }
 
-  // Fallback: blendshape weights via setWeight + _has
   if (typeof A.setWeight !== "function") return;
 
   const has = (key: string) => Boolean(A._has?.(key));
@@ -104,7 +164,6 @@ function setAvatarMood(mood: Mood, phase: "pre" | "during" | "after" = "during")
     "Angry",
   ];
 
-  // Reset all to 0
   for (const k of allExprKeys) {
     if (has(k)) A.setWeight(k, 0);
   }
@@ -123,7 +182,6 @@ function setAvatarMood(mood: Mood, phase: "pre" | "during" | "after" = "during")
 function avatarTalkStart() {
   const A = getAvatar();
   if (!A) return;
-  // If your avatar has any of these APIs, they'll be triggered:
   if (typeof A.setTalking === "function") A.setTalking(true);
   if (typeof A.setGesture === "function") A.setGesture("talk");
   if (typeof A.playGesture === "function") A.playGesture("talk");
@@ -142,10 +200,6 @@ function avatarTalkStop() {
 let unlocked = false;
 let unlockPromise: Promise<void> | null = null;
 
-/**
- * On iOS/Safari, speech is blocked until user gesture.
- * This waits for first tap/click/touch, then warms up audio.
- */
 export async function ensureSpeechUnlocked(): Promise<void> {
   if (!isBrowser()) return;
   if (unlocked) return;
@@ -155,9 +209,7 @@ export async function ensureSpeechUnlocked(): Promise<void> {
       const done = () => {
         unlocked = true;
 
-        // Optional tiny AudioContext warmup (helps some browsers)
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext;
           if (Ctor) {
             const ctx = new Ctor();
@@ -183,7 +235,6 @@ export async function ensureSpeechUnlocked(): Promise<void> {
         resolve();
       };
 
-      // Next user gesture unlocks everything
       window.addEventListener("click", done, { once: true });
       window.addEventListener("touchstart", done, { once: true });
     });
@@ -192,40 +243,13 @@ export async function ensureSpeechUnlocked(): Promise<void> {
   return unlockPromise;
 }
 
-/* ========= Public helpers ========= */
+/* ========= Viseme timeline generation ========= */
 
-export function stopSpeech() {
-  if (!isBrowser()) return;
-  try {
-    window.speechSynthesis.cancel();
-  } catch {
-    // ignore
-  }
-}
+type KeyVal = { time: number; key: string; value: number };
 
-/**
- * Main speech helper:
- * - waits for iOS unlock (first user tap)
- * - waits for voices
- * - syncs with avatar visemes + expressions + gesture hooks
- */
-export async function speakInBrowser(
-  text: string,
-  opts?: {
-    rate?: number;
-    pitch?: number;
-    lang?: string;
-    voiceName?: string;
-    mood?: Mood;
-  }
-): Promise<void> {
-  if (!isBrowser()) throw new Error("Web Speech not supported");
-  const t = (text || "").trim();
-  if (!t) return;
-
-  await ensureSpeechUnlocked();
-  await waitForVoices();
-  await waitForAvatar();
+function generateVisemeTimeline(text: string, rate: number): KeyVal[] {
+  const t = text.trim();
+  if (!t) return [];
 
   const avatar = getAvatar();
   const has = (key: string) => Boolean(avatar?._has?.(key));
@@ -240,7 +264,6 @@ export async function speakInBrowser(
   const V_U = (["viseme_U", ROUND, "mouthFunnel"] as string[]).find(has) || ROUND;
 
   const words = (t.match(/\S+/g) || []).length || 1;
-  const rate = opts?.rate ?? 0.95;
   const baseWPM = 150;
   const wpm = Math.max(100, baseWPM * rate);
   const estDurationMs = (words / (wpm / 60)) * 1000;
@@ -249,9 +272,7 @@ export async function speakInBrowser(
   let charMs = Math.max(70, estDurationMs / letters);
   charMs = Math.min(charMs, 130);
 
-  type KeyVal = { time: number; key: string; value: number };
   const timeline: KeyVal[] = [];
-
   let time = 0;
   const push = (key: string, value: number) => timeline.push({ time, key, value });
 
@@ -332,131 +353,234 @@ export async function speakInBrowser(
     time += charMs;
   }
 
-  const timelineEndMs = timeline.length ? timeline[timeline.length - 1].time : 0;
+  return timeline;
+}
+
+/* ========= Public API ========= */
+
+export function stopSpeech() {
+  if (!isBrowser()) return;
+  // Use dynamic import but don't await - fire and forget
+  import("speech-to-speech")
+    .then(({ sharedAudioPlayer }) => {
+      sharedAudioPlayer.stopAndClearQueue();
+    })
+    .catch(() => {
+      // ignore
+    });
+}
+
+/**
+ * Main speech helper with Piper TTS:
+ * - waits for iOS unlock (first user tap)
+ * - initializes TTS
+ * - syncs with avatar visemes + expressions + gesture hooks
+ */
+export async function speakInBrowser(
+  text: string,
+  opts?: {
+    rate?: number;
+    pitch?: number;
+    lang?: string;
+    voiceName?: string;
+    mood?: Mood;
+  }
+): Promise<void> {
+  if (!isBrowser()) throw new Error("TTS only works in browser");
+  const t = (text || "").trim();
+  if (!t) return;
+
+  await ensureSpeechUnlocked();
+  await waitForAvatar();
+
+  const rate = opts?.rate ?? 0.6;
   const mood: Mood = opts?.mood ?? "neutral";
 
-  setAvatarMood(mood, "pre");
+  // Generate viseme timeline
+  const timeline = generateVisemeTimeline(t, rate);
+  const timelineEndMs = timeline.length ? timeline[timeline.length - 1].time : 0;
 
-  return new Promise<void>((resolve) => {
-    const synth = window.speechSynthesis;
+  // Initialize TTS
+  const tts = await initializeTTS(opts?.lang);
 
+  // Dynamic import to avoid SSR
+  const { sharedAudioPlayer } = await import("speech-to-speech");
+
+  // Stop any current speech
     if (speakingLock) {
-      try {
-        synth.cancel();
-      } catch {
-        // ignore
-      }
+    sharedAudioPlayer.stopAndClearQueue();
     }
     speakingLock = true;
 
-    const u = new SpeechSynthesisUtterance(t);
-    u.rate = rate;
-    u.pitch = opts?.pitch ?? 1.0;
+  // Set pre-mood
+  setAvatarMood(mood, "pre");
 
-    const voices = synth.getVoices();
-    let v: SpeechSynthesisVoice | undefined;
+  try {
+    // Synthesize text to audio
+    const result = await tts.synthesize(t);
 
-    // 1) explicit voiceName
-    if (opts?.voiceName) {
-      v = voices.find((x) => x.name === opts.voiceName);
-    }
-
-    // 2) try to match language (hi-IN / pa-IN etc.)
-    if (!v && opts?.lang) {
-      const target = opts.lang.toLowerCase();
-      const primary = target.split("-")[0];
-      v =
-        voices.find((x) => x.lang.toLowerCase().startsWith(target)) ||
-        voices.find((x) => x.lang.toLowerCase().startsWith(primary));
-    }
-
-    // 3) fallback: nice English voice
-    if (!v) {
-      v = voices.find(
-        (x) =>
-          /en[-_]US/i.test(x.lang) &&
-          /Google|Microsoft|Samantha|Daniel/.test(x.name)
-      );
-    }
-    if (!v) {
-      v = voices.find((x) => /en/i.test(x.lang));
-    }
-
-    // ✅ FINAL: lang ALWAYS matches voice.lang when we have a voice
-    if (v) {
-      u.voice = v;
-      u.lang = v.lang;
-    } else {
-      // agar koi voice hi nahi mili, tab hi opts.lang ya default
-      u.lang = opts?.lang ?? "en-IN";
-    }
-
-    let fillerInt: any = null;
+    // Play visemes during audio playback
+    let startTime = performance.now();
     let rafId: number | null = null;
-    let startedAt = 0;
+    let fillerInt: any = null;
+    let isPlaying = false;
 
-    const startOsc = () => {
-      const A = 0.6;
-      const B = 0.5;
-      const F = 2.8;
-      const BASE = 0.12;
-      const t0 = performance.now();
+    const playVisemes = () => {
+      if (!isPlaying) return;
+      
+      const elapsed = performance.now() - startTime;
+      
+      // Find current viseme based on elapsed time
+      let currentViseme: KeyVal | null = null;
+      for (let i = timeline.length - 1; i >= 0; i--) {
+        if (timeline[i].time <= elapsed) {
+          currentViseme = timeline[i];
+          break;
+        }
+      }
 
-      const tick = () => {
-        if (!synth.speaking) return;
-        const s = Math.sin(((performance.now() - t0) / 1000) * Math.PI * 2 * F);
-        const wide = Math.max(0, BASE + A * Math.max(0, s));
-        const round = Math.max(0, BASE + B * Math.max(0, -s));
-        const Av = getAvatar();
-        Av?.setWeight?.(WIDE, wide);
-        Av?.setWeight?.(ROUND, round);
-        rafId = requestAnimationFrame(tick);
-      };
+      // Apply current viseme
+      if (currentViseme) {
+        const avatar = getAvatar();
+        if (avatar?.setWeight) {
+          // Reset all visemes first
+          const allVisemes = [
+            "jawOpen", "mouthOpen", "viseme_aa", "mouthAa",
+            "mouthFunnel", "mouthPucker", "viseme_O", "viseme_U",
+            "viseme_E", "viseme_I", "viseme_PP", "viseme_FF",
+            "viseme_TH", "viseme_DD", "viseme_kk", "viseme_SS", "viseme_RR"
+          ];
+          allVisemes.forEach(v => {
+            if (avatar._has?.(v)) avatar.setWeight(v, 0);
+          });
+          
+          // Set current viseme
+          avatar.setWeight(currentViseme.key, currentViseme.value);
+        }
+      }
 
-      rafId = requestAnimationFrame(tick);
+      // Continue animation if still playing
+      if (isPlaying) {
+        rafId = requestAnimationFrame(playVisemes);
+      }
     };
 
-    u.onstart = () => {
-      startedAt = performance.now();
+    // Set up callbacks - use a simpler approach without trying to preserve originals
+    // Start playing immediately
+    isPlaying = true;
+    startTime = performance.now();
       avatarTalkStart();
       setAvatarMood(mood, "during");
-
       getAvatar()?.playVisemes?.(timeline);
+    rafId = requestAnimationFrame(playVisemes);
 
       fillerInt = setInterval(() => {
-        const elapsed = performance.now() - startedAt;
+      const elapsed = performance.now() - startTime;
         if (elapsed > timelineEndMs + 150) {
           getAvatar()?.pulseWord?.();
         }
       }, 140);
 
-      startOsc();
-    };
+    // Set up callbacks if available (but don't try to preserve originals)
+    if (typeof sharedAudioPlayer.setStatusCallback === "function") {
+      try {
+        sharedAudioPlayer.setStatusCallback((status: string) => {
+          // Just log or handle status if needed
+          if (status.includes("playing") || status.includes("start")) {
+            if (!isPlaying) {
+              isPlaying = true;
+              startTime = performance.now();
+            }
+          }
+        });
+      } catch (error) {
+        // Ignore callback errors
+      }
+    }
 
-    const cleanup = () => {
+    if (typeof sharedAudioPlayer.setPlayingChangeCallback === "function") {
+      try {
+        sharedAudioPlayer.setPlayingChangeCallback((playing: boolean) => {
+          if (!playing && isPlaying) {
+            // Cleanup when playback stops
+            isPlaying = false;
       if (fillerInt) clearInterval(fillerInt);
       if (rafId !== null) cancelAnimationFrame(rafId);
       getAvatar()?.playVisemes?.([]);
-      speakingLock = false;
-
       avatarTalkStop();
       setAvatarMood("neutral", "after");
-    };
-
-    u.onend = () => {
-      cleanup();
-      resolve();
-    };
-    u.onerror = () => {
-      cleanup();
-      resolve();
-    };
-
-    try {
-      synth.cancel();
-    } catch {
-      // ignore
+      speakingLock = false;
+          }
+        });
+      } catch (error) {
+        // Ignore callback errors
+      }
     }
-    synth.speak(u);
-  });
+
+    // Slow down audio playback using Web Audio API playbackRate (doesn't change pitch)
+    const playbackRate = rate; // 0.6 = 60% speed (slower)
+    
+    // Create audio context and buffer
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioBuffer = audioContext.createBuffer(1, result.audio.length, result.sampleRate);
+    audioBuffer.getChannelData(0).set(result.audio);
+    
+    // Create buffer source with playback rate control
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.playbackRate.value = playbackRate; // This slows down without changing pitch
+    
+    // Connect to gain node for volume control
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = 1.0;
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Play the slowed audio
+    const playPromise = new Promise<void>((resolve, reject) => {
+      source.onended = () => {
+        try {
+          audioContext.close();
+        } catch {
+          // Ignore close errors
+        }
+        resolve();
+      };
+      source.onerror = (error) => {
+        reject(error);
+      };
+      try {
+        source.start(0);
+      } catch (error) {
+        reject(error);
+      }
+    });
+    
+    // Wait for audio to complete
+    await playPromise;
+
+    // Final cleanup
+    isPlaying = false;
+    if (fillerInt) clearInterval(fillerInt);
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    getAvatar()?.playVisemes?.([]);
+      avatarTalkStop();
+      setAvatarMood("neutral", "after");
+    speakingLock = false;
+
+    // Restore original callbacks
+    if (originalStatusCallback && typeof sharedAudioPlayer.setStatusCallback === "function") {
+      sharedAudioPlayer.setStatusCallback(originalStatusCallback);
+    }
+    if (originalPlayingCallback && typeof sharedAudioPlayer.setPlayingChangeCallback === "function") {
+      sharedAudioPlayer.setPlayingChangeCallback(originalPlayingCallback);
+    }
+
+  } catch (error) {
+    console.error("TTS error:", error);
+    speakingLock = false;
+    avatarTalkStop();
+    setAvatarMood("neutral", "after");
+    throw error;
+  }
 }

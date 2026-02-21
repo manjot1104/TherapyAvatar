@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
-import { speakInBrowser } from "@/lib/speak";
+import { speakInBrowser, stopSpeech } from "@/lib/speak";
 
 export type PreQ = { id: string; text: string };
 
@@ -18,7 +18,7 @@ type Props = {
   gapMs?: number;
 
   /** TTS options (match speakInBrowser signature) */
-  rate?: number;      // default 0.95
+  rate?: number;      // default 0.6
   pitch?: number;
   lang?: string;      // e.g. "en-IN", "hi-IN", "pa-IN"
   voiceName?: string; // exact voice name if you have one
@@ -35,39 +35,7 @@ const DEFAULTS: PreQ[] = [
   { id: "choice", text: "Which game or activity do you want to start with?" },
 ];
 
-/** Wait until the browser loads available voices (important for first TTS) */
-async function waitForVoices(timeoutMs = 2000) {
-  if (typeof window === "undefined") return;
-  const synth = window.speechSynthesis;
-  if (!synth) return;
-
-  if (synth.getVoices().length > 0) return;
-
-  let resolved = false;
-  await new Promise<void>((res) => {
-    const onChange = () => {
-      if (!resolved && synth.getVoices().length > 0) {
-        resolved = true;
-        synth.removeEventListener?.("voiceschanged", onChange as any);
-        res();
-      }
-    };
-    synth.addEventListener?.("voiceschanged", onChange as any);
-
-    // Fallback: poll briefly
-    const t0 = Date.now();
-    const id = setInterval(() => {
-      if (synth.getVoices().length > 0 || Date.now() - t0 > timeoutMs) {
-        clearInterval(id);
-        if (!resolved) {
-          synth.removeEventListener?.("voiceschanged", onChange as any);
-          resolved = true;
-          res();
-        }
-      }
-    }, 60);
-  });
-}
+// waitForVoices removed - not needed for Piper TTS
 
 const PredefinedQuestionsAuto = React.forwardRef<PredefinedQuestionsAutoHandle, Props>(
   (
@@ -76,7 +44,7 @@ const PredefinedQuestionsAuto = React.forwardRef<PredefinedQuestionsAutoHandle, 
       onDone,
       setLastAssistant,
       gapMs = 600,
-      rate = 0.95,
+      rate = 0.6,
       pitch,
       lang,
       voiceName,
@@ -93,14 +61,11 @@ const PredefinedQuestionsAuto = React.forwardRef<PredefinedQuestionsAutoHandle, 
       if (!line) return;
       setLastAssistant?.(line);
 
-      // Ensure TTS is ready (avoids first-load silence)
-      await waitForVoices();
-
       if (speakingRef.current) return;
       speakingRef.current = true;
       try {
-        // Cancel anything pending then speak
-        try { window.speechSynthesis?.cancel(); } catch {}
+        // Stop any current speech then speak
+        stopSpeech();
         await speakInBrowser(line, { rate, pitch, lang, voiceName });
       } catch {
         // ignore speech failures so flow doesn't break

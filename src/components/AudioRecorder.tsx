@@ -221,7 +221,7 @@ export default function AudioRecorder({
 
       await sleep(120);
       setStatus("Speaking…");
-      if (reply) await speakInBrowser(reply, { rate: 0.95 });
+      if (reply) await speakInBrowser(reply, { rate: 0.6 });
       setStatus("Ready. Tap mic.");
     } catch (e) {
       console.error("processChunk error:", e);

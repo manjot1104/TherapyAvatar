@@ -351,6 +351,7 @@ function AvatarModel({
   const root = useRef<THREE.Object3D>(null);
   const timeRef = useRef(0);
   const talkFactorRef = useRef(0); // 0 = idle, 1 = full talking
+  const isSpeakingRef = useRef(false);
 
   // For natural movements: add randomness and varied patterns
   const idleOffsetRef = useRef({
@@ -364,6 +365,19 @@ function AvatarModel({
     if (root.current) {
       root.current.rotation.set(PITCH_UP, 0, 0);
     }
+
+    // Poll TTS speaking state
+    const interval = setInterval(async () => {
+      if (typeof window !== "undefined") {
+        try {
+          const { sharedAudioPlayer } = await import("speech-to-speech");
+          isSpeakingRef.current = sharedAudioPlayer.isAudioPlaying();
+        } catch {
+          isSpeakingRef.current = false;
+        }
+      }
+    }, 100);
+    return () => clearInterval(interval);
   }, []);
 
   useFrame((_, dt) => {
@@ -383,11 +397,8 @@ function AvatarModel({
       }
     }
 
-    // Speech state
-    let isTalking = false;
-    if (typeof window !== "undefined" && (window as any).speechSynthesis) {
-      isTalking = (window as any).speechSynthesis.speaking;
-    }
+    // Speech state (from Piper TTS)
+    const isTalking = isSpeakingRef.current;
 
     // Smooth talk factor
     const targetTalk = isTalking ? 1 : 0;

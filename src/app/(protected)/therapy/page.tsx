@@ -149,7 +149,7 @@ export default function TherapyMainPage() {
               priority
               className="object-cover pointer-events-none select-none"
             />
-            <div className="absolute inset-0 bg-linear-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/0 to-black/10 dark:from-black/10 dark:via-black/15 dark:to-black/40 pointer-events-none" />
 
             <ScenarioRunner
               scenarioKey={activeScenario}

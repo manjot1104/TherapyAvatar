@@ -546,12 +546,14 @@ export async function speakInBrowser(
         }
         resolve();
       };
-      source.onerror = (error) => {
-        reject(error);
-      };
       try {
         source.start(0);
       } catch (error) {
+        try {
+          audioContext.close();
+        } catch {
+          // Ignore close errors
+        }
         reject(error);
       }
     });

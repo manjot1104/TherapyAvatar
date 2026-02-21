@@ -566,17 +566,9 @@ export async function speakInBrowser(
     if (fillerInt) clearInterval(fillerInt);
     if (rafId !== null) cancelAnimationFrame(rafId);
     getAvatar()?.playVisemes?.([]);
-      avatarTalkStop();
-      setAvatarMood("neutral", "after");
+    avatarTalkStop();
+    setAvatarMood("neutral", "after");
     speakingLock = false;
-
-    // Restore original callbacks
-    if (originalStatusCallback && typeof sharedAudioPlayer.setStatusCallback === "function") {
-      sharedAudioPlayer.setStatusCallback(originalStatusCallback);
-    }
-    if (originalPlayingCallback && typeof sharedAudioPlayer.setPlayingChangeCallback === "function") {
-      sharedAudioPlayer.setPlayingChangeCallback(originalPlayingCallback);
-    }
 
   } catch (error) {
     console.error("TTS error:", error);

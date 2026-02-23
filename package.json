@@ -6,7 +6,8 @@
     "clean": "rimraf .next",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "node scripts/patch-piper-tts.js"
   },
   "dependencies": {
     "@mediapipe/camera_utils": "^0.3.1675466862",
@@ -49,11 +50,14 @@
     "@types/node": "^20",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
+    "@types/webpack": "^5.28.5",
     "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.21",
+    "patch-package": "^8.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.16",
     "tsx": "^4.20.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "webpack": "^5.105.2"
   }
 }

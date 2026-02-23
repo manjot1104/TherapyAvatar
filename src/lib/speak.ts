@@ -1,5 +1,6 @@
 // src/lib/speak.ts
 // Piper TTS implementation with avatar viseme support
+"use client";
 
 // Types will be inferred from dynamic imports
 type TTSLogic = any;

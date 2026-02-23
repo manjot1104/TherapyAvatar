@@ -1,22 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    turbo: {
-      rules: {
-        "*.svg": {
-          loaders: ["@svgr/webpack"],
-          as: "*.js",
-        },
-      },
-    },
-  },
+  // Turbopack config (Next.js 16 uses Turbopack by default)
+  turbopack: {},
   output: 'standalone',
   generateBuildId: async () => {
     return 'build-' + Date.now()
   },
-  // Transpile packages that need it
-  transpilePackages: ['speech-to-speech', '@realtimex/piper-tts-web'],
+  // Exclude these packages from server-side bundling (they're browser-only)
+  // Note: serverComponentsExternalPackages might not be needed in Next.js 16
   async headers() {
     return [
       {
@@ -29,13 +21,23 @@ const nextConfig: NextConfig = {
     ];
   },
   webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-      };
-    }
+    // Set fallbacks for both client and server to prevent fs/path issues
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
+    
+    // Provide empty stubs for fs and path globally (browser-only packages)
+    const fsStubPath = require.resolve('./webpack-fs-stub.js');
+    const pathStubPath = require.resolve('./webpack-path-stub.js');
+    
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'fs': fsStubPath,
+      'path': pathStubPath,
+    };
+    
     return config;
   },
 };

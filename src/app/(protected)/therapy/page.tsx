@@ -20,7 +20,6 @@ import { createClient } from "@/lib/supabase/browser-client";
 import ScenarioRunner from "@/components/ScenarioRunner";
 import { SCENARIOS } from "@/data/scenarios";
 import { speakInBrowser, stopSpeech } from "@/lib/speak";
-import { sharedAudioPlayer } from "speech-to-speech";
 
 const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), {
   ssr: false,

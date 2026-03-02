@@ -558,22 +558,8 @@ export async function speakInBrowser(
     // Use sharedAudioPlayer to play audio (speech-to-speech package's built-in player)
     // This is more efficient and less laggy than manual AudioContext
     try {
-      // Try to set playback rate if supported
-      if (rate !== 1.0) {
-        // Try to access the internal AudioContext and set playback rate
-        try {
-          const audioPlayerInstance = sharedAudioPlayer.getInstance?.();
-          if (audioPlayerInstance && audioPlayerInstance.audioContext) {
-            // If we can access the AudioContext, we might be able to set rate on sources
-            // For now, we'll add the audio and let the player handle it
-            // The rate will be handled by adjusting the timeline duration
-          }
-        } catch (e) {
-          // Ignore if we can't access the instance
-        }
-      }
-      
       // Add audio to the queue - it will play automatically since autoPlay is true
+      // Note: Playback rate is handled by adjusting the timeline duration
       sharedAudioPlayer.addAudioIntoQueue(result.audio, result.sampleRate);
       
       // Calculate estimated duration (adjusted for rate)

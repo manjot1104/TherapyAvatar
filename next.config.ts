@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     return 'build-' + Date.now()
   },
   // Exclude these packages from server-side bundling (they're browser-only)
-  serverComponentsExternalPackages: [
+  serverExternalPackages: [
     '@realtimex/piper-tts-web',
     'speech-to-speech',
     'onnxruntime-web'

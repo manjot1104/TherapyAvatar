@@ -85,11 +85,55 @@ export default function TherapyMainPage() {
 
   // poll TTS speaking state
   useEffect(() => {
-    const interval = setInterval(async () => {
-      if (typeof window !== "undefined") {
+    // Only run in browser
+    if (typeof window === "undefined") return;
+    
+    let sharedAudioPlayer: any = null;
+    let importPromise: Promise<any> | null = null;
+    let importFailed = false;
+    
+    // Import once and cache, with error handling
+    const getAudioPlayer = async () => {
+      if (importFailed) return null;
+      if (sharedAudioPlayer) return sharedAudioPlayer;
+      if (importPromise) {
         try {
-          const { sharedAudioPlayer } = await import("speech-to-speech");
-          setIsSpeaking(sharedAudioPlayer.isAudioPlaying());
+          const module = await importPromise;
+          sharedAudioPlayer = module.sharedAudioPlayer;
+          return sharedAudioPlayer;
+        } catch {
+          importFailed = true;
+          return null;
+        }
+      }
+      
+      try {
+        importPromise = import("speech-to-speech").catch((err) => {
+          console.warn("Failed to import speech-to-speech:", err);
+          importFailed = true;
+          return null;
+        });
+        const module = await importPromise;
+        if (module) {
+          sharedAudioPlayer = module.sharedAudioPlayer;
+        }
+        return sharedAudioPlayer;
+      } catch (error) {
+        console.warn("Error loading audio player:", error);
+        importFailed = true;
+        return null;
+      }
+    };
+
+    const interval = setInterval(async () => {
+      if (typeof window !== "undefined" && !importFailed) {
+        try {
+          const player = await getAudioPlayer();
+          if (player && typeof player.isAudioPlaying === "function") {
+            setIsSpeaking(player.isAudioPlaying());
+          } else {
+            setIsSpeaking(false);
+          }
         } catch {
           setIsSpeaking(false);
         }

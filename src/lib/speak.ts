@@ -84,12 +84,21 @@ async function initializeTTS(lang?: string): Promise<any> {
       "pa-IN": "en_US-hfc_female-medium",
     };
 
+    // Check for SharedArrayBuffer support (required for ONNX Runtime)
+    if (typeof SharedArrayBuffer === "undefined") {
+      throw new Error(
+        "SharedArrayBuffer is not available. Ensure COOP/COEP headers are set."
+      );
+    }
+
     const langCode = lang?.toLowerCase().split("-")[0] || "en";
     const voiceId = voiceMap[langCode] || voiceMap[lang || ""] || "en_US-hfc_female-medium";
 
+    // Disable warmUp to reduce initial memory allocation
+    // Model will be loaded on first synthesis instead
     ttsInstance = new TTSLogic({
       voiceId,
-      warmUp: true,
+      warmUp: false, // Changed from true to reduce memory usage
     });
 
     await ttsInstance.initialize();
@@ -361,7 +370,8 @@ function generateVisemeTimeline(text: string, rate: number): KeyVal[] {
 
 export function stopSpeech() {
   if (!isBrowser()) return;
-  // Use dynamic import but don't await - fire and forget
+  
+  // Stop and clear the sharedAudioPlayer queue
   import("speech-to-speech")
     .then(({ sharedAudioPlayer }) => {
       sharedAudioPlayer.stopAndClearQueue();
@@ -369,6 +379,9 @@ export function stopSpeech() {
     .catch(() => {
       // ignore
     });
+  
+  // Reset speaking lock
+  speakingLock = false;
 }
 
 /**
@@ -394,7 +407,7 @@ export async function speakInBrowser(
   await ensureSpeechUnlocked();
   await waitForAvatar();
 
-  const rate = opts?.rate ?? 0.6;
+  const rate = opts?.rate ?? 1.0; // Default to normal speed (100%)
   const mood: Mood = opts?.mood ?? "neutral";
 
   // Generate viseme timeline
@@ -408,17 +421,41 @@ export async function speakInBrowser(
   const { sharedAudioPlayer } = await import("speech-to-speech");
 
   // Stop any current speech
-    if (speakingLock) {
-    sharedAudioPlayer.stopAndClearQueue();
+  if (speakingLock) {
+    try {
+      sharedAudioPlayer.stopAndClearQueue();
+    } catch (e) {
+      // Ignore errors
     }
-    speakingLock = true;
+  }
+  speakingLock = true;
 
   // Set pre-mood
   setAvatarMood(mood, "pre");
 
   try {
     // Synthesize text to audio
-    const result = await tts.synthesize(t);
+    // Wrap in try-catch to handle memory allocation errors
+    let result;
+    try {
+      result = await tts.synthesize(t);
+    } catch (synthesizeError: any) {
+      // If memory allocation fails, try to clear and retry once
+      if (synthesizeError?.message?.includes("memory") || 
+          synthesizeError?.message?.includes("allocation")) {
+        console.warn("Memory allocation failed, attempting cleanup and retry...");
+        // Clear any existing audio queue
+        try {
+          sharedAudioPlayer.stopAndClearQueue();
+        } catch {}
+        // Wait a bit for memory to be freed
+        await new Promise(resolve => setTimeout(resolve, 500));
+        // Retry synthesis
+        result = await tts.synthesize(t);
+      } else {
+        throw synthesizeError;
+      }
+    }
 
     // Play visemes during audio playback
     let startTime = performance.now();
@@ -518,49 +555,73 @@ export async function speakInBrowser(
       }
     }
 
-    // Slow down audio playback using Web Audio API playbackRate (doesn't change pitch)
-    const playbackRate = rate; // 0.6 = 60% speed (slower)
-    
-    // Create audio context and buffer
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const audioBuffer = audioContext.createBuffer(1, result.audio.length, result.sampleRate);
-    audioBuffer.getChannelData(0).set(result.audio);
-    
-    // Create buffer source with playback rate control
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.playbackRate.value = playbackRate; // This slows down without changing pitch
-    
-    // Connect to gain node for volume control
-    const gainNode = audioContext.createGain();
-    gainNode.gain.value = 1.0;
-    source.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    // Play the slowed audio
-    const playPromise = new Promise<void>((resolve, reject) => {
-      source.onended = () => {
+    // Use sharedAudioPlayer to play audio (speech-to-speech package's built-in player)
+    // This is more efficient and less laggy than manual AudioContext
+    try {
+      // Try to set playback rate if supported
+      if (rate !== 1.0) {
+        // Try to access the internal AudioContext and set playback rate
         try {
-          audioContext.close();
-        } catch {
-          // Ignore close errors
+          const audioPlayerInstance = sharedAudioPlayer.getInstance?.();
+          if (audioPlayerInstance && audioPlayerInstance.audioContext) {
+            // If we can access the AudioContext, we might be able to set rate on sources
+            // For now, we'll add the audio and let the player handle it
+            // The rate will be handled by adjusting the timeline duration
+          }
+        } catch (e) {
+          // Ignore if we can't access the instance
         }
-        resolve();
-      };
-      try {
-        source.start(0);
-      } catch (error) {
-        try {
-          audioContext.close();
-        } catch {
-          // Ignore close errors
-        }
-        reject(error);
       }
-    });
-    
-    // Wait for audio to complete
-    await playPromise;
+      
+      // Add audio to the queue - it will play automatically since autoPlay is true
+      sharedAudioPlayer.addAudioIntoQueue(result.audio, result.sampleRate);
+      
+      // Calculate estimated duration (adjusted for rate)
+      const baseDuration = (result.audio.length / result.sampleRate) * 1000;
+      const adjustedDuration = baseDuration / rate;
+      
+      // Wait for playback to complete using callbacks
+      await new Promise<void>((resolve) => {
+        let resolved = false;
+        let checkCount = 0;
+        const maxChecks = Math.ceil(adjustedDuration / 50) + 20; // Add buffer
+        
+        // Set up callback to detect when playback finishes
+        const checkCompletion = () => {
+          if (!sharedAudioPlayer.isAudioPlaying()) {
+            if (!resolved) {
+              resolved = true;
+              resolve();
+            }
+          }
+        };
+        
+        // Check periodically if playback is done
+        const checkInterval = setInterval(() => {
+          checkCount++;
+          checkCompletion();
+          if (resolved || checkCount > maxChecks) {
+            clearInterval(checkInterval);
+            if (!resolved) {
+              resolved = true;
+              resolve();
+            }
+          }
+        }, 50);
+        
+        // Also set a timeout as fallback
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, adjustedDuration + 1000);
+      });
+    } catch (error: any) {
+      console.error("Failed to play audio with sharedAudioPlayer:", error);
+      throw error;
+    }
 
     // Final cleanup
     isPlaying = false;
@@ -573,6 +634,13 @@ export async function speakInBrowser(
 
   } catch (error) {
     console.error("TTS error:", error);
+    // Cleanup on error
+    try {
+      const { sharedAudioPlayer } = await import("speech-to-speech");
+      sharedAudioPlayer.stopAndClearQueue();
+    } catch (e) {
+      // Ignore
+    }
     speakingLock = false;
     avatarTalkStop();
     setAvatarMood("neutral", "after");

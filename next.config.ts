@@ -8,7 +8,11 @@ const nextConfig: NextConfig = {
     return 'build-' + Date.now()
   },
   // Exclude these packages from server-side bundling (they're browser-only)
-  // Note: serverComponentsExternalPackages might not be needed in Next.js 16
+  serverComponentsExternalPackages: [
+    '@realtimex/piper-tts-web',
+    'speech-to-speech',
+    'onnxruntime-web'
+  ],
   async headers() {
     return [
       {
@@ -37,6 +41,26 @@ const nextConfig: NextConfig = {
       'fs': fsStubPath,
       'path': pathStubPath,
     };
+    
+    // Exclude heavy browser-only packages from being processed during build
+    if (!isServer) {
+      config.externals = config.externals || [];
+      if (typeof config.externals === 'function') {
+        const originalExternals = config.externals;
+        config.externals = [
+          originalExternals,
+          ({ request }: { request: string }) => {
+            if (
+              request === 'speech-to-speech' ||
+              request === '@realtimex/piper-tts-web' ||
+              request === 'onnxruntime-web'
+            ) {
+              return `commonjs ${request}`;
+            }
+          },
+        ];
+      }
+    }
     
     return config;
   },

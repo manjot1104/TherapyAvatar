@@ -457,22 +457,36 @@ export async function speakInBrowser(
       }
     }
 
+    // Calculate actual audio duration for proper sync
+    const actualAudioDuration = (result.audio.length / result.sampleRate) * 1000;
+    
+    // Scale timeline to match actual audio duration
+    const timelineScale = actualAudioDuration / Math.max(timelineEndMs, 1);
+    const scaledTimeline = timeline.map(v => ({
+      ...v,
+      time: v.time * timelineScale
+    }));
+    const scaledTimelineEndMs = scaledTimeline.length > 0 
+      ? scaledTimeline[scaledTimeline.length - 1].time 
+      : actualAudioDuration;
+
     // Play visemes during audio playback
-    let startTime = performance.now();
+    let startTime: number | null = null;
     let rafId: number | null = null;
     let fillerInt: any = null;
     let isPlaying = false;
+    let audioStarted = false;
 
     const playVisemes = () => {
-      if (!isPlaying) return;
+      if (!isPlaying || !audioStarted || startTime === null) return;
       
       const elapsed = performance.now() - startTime;
       
       // Find current viseme based on elapsed time
       let currentViseme: KeyVal | null = null;
-      for (let i = timeline.length - 1; i >= 0; i--) {
-        if (timeline[i].time <= elapsed) {
-          currentViseme = timeline[i];
+      for (let i = scaledTimeline.length - 1; i >= 0; i--) {
+        if (scaledTimeline[i].time <= elapsed) {
+          currentViseme = scaledTimeline[i];
           break;
         }
       }
@@ -492,43 +506,39 @@ export async function speakInBrowser(
             if (avatar._has?.(v)) avatar.setWeight(v, 0);
           });
           
-          // Set current viseme
+          // Set current viseme with smooth transition
           avatar.setWeight(currentViseme.key, currentViseme.value);
         }
       }
 
       // Continue animation if still playing
-      if (isPlaying) {
+      if (isPlaying && audioStarted) {
         rafId = requestAnimationFrame(playVisemes);
       }
     };
 
-    // Set up callbacks - use a simpler approach without trying to preserve originals
-    // Start playing immediately
-    isPlaying = true;
-    startTime = performance.now();
-      avatarTalkStart();
-      setAvatarMood(mood, "during");
-      getAvatar()?.playVisemes?.(timeline);
-    rafId = requestAnimationFrame(playVisemes);
-
-      fillerInt = setInterval(() => {
-      const elapsed = performance.now() - startTime;
-        if (elapsed > timelineEndMs + 150) {
-          getAvatar()?.pulseWord?.();
-        }
-      }, 140);
-
-    // Set up callbacks if available (but don't try to preserve originals)
+    // Set up callbacks to detect when audio actually starts
     if (typeof sharedAudioPlayer.setStatusCallback === "function") {
       try {
         sharedAudioPlayer.setStatusCallback((status: string) => {
-          // Just log or handle status if needed
-          if (status.includes("playing") || status.includes("start")) {
-            if (!isPlaying) {
-              isPlaying = true;
-              startTime = performance.now();
-            }
+          if ((status.includes("playing") || status.includes("start")) && !audioStarted) {
+            audioStarted = true;
+            startTime = performance.now();
+            isPlaying = true;
+            avatarTalkStart();
+            setAvatarMood(mood, "during");
+            getAvatar()?.playVisemes?.(scaledTimeline);
+            rafId = requestAnimationFrame(playVisemes);
+            
+            // Start filler interval
+            fillerInt = setInterval(() => {
+              if (startTime) {
+                const elapsed = performance.now() - startTime;
+                if (elapsed > scaledTimelineEndMs + 150) {
+                  getAvatar()?.pulseWord?.();
+                }
+              }
+            }, 140);
           }
         });
       } catch (error) {
@@ -539,15 +549,35 @@ export async function speakInBrowser(
     if (typeof sharedAudioPlayer.setPlayingChangeCallback === "function") {
       try {
         sharedAudioPlayer.setPlayingChangeCallback((playing: boolean) => {
-          if (!playing && isPlaying) {
+          if (playing && !audioStarted) {
+            // Audio just started
+            audioStarted = true;
+            startTime = performance.now();
+            isPlaying = true;
+            avatarTalkStart();
+            setAvatarMood(mood, "during");
+            getAvatar()?.playVisemes?.(scaledTimeline);
+            rafId = requestAnimationFrame(playVisemes);
+            
+            // Start filler interval
+            fillerInt = setInterval(() => {
+              if (startTime) {
+                const elapsed = performance.now() - startTime;
+                if (elapsed > scaledTimelineEndMs + 150) {
+                  getAvatar()?.pulseWord?.();
+                }
+              }
+            }, 140);
+          } else if (!playing && isPlaying) {
             // Cleanup when playback stops
             isPlaying = false;
-      if (fillerInt) clearInterval(fillerInt);
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      getAvatar()?.playVisemes?.([]);
-      avatarTalkStop();
-      setAvatarMood("neutral", "after");
-      speakingLock = false;
+            audioStarted = false;
+            if (fillerInt) clearInterval(fillerInt);
+            if (rafId !== null) cancelAnimationFrame(rafId);
+            getAvatar()?.playVisemes?.([]);
+            avatarTalkStop();
+            setAvatarMood("neutral", "after");
+            speakingLock = false;
           }
         });
       } catch (error) {
@@ -559,18 +589,13 @@ export async function speakInBrowser(
     // This is more efficient and less laggy than manual AudioContext
     try {
       // Add audio to the queue - it will play automatically since autoPlay is true
-      // Note: Playback rate is handled by adjusting the timeline duration
       sharedAudioPlayer.addAudioIntoQueue(result.audio, result.sampleRate);
-      
-      // Calculate estimated duration (adjusted for rate)
-      const baseDuration = (result.audio.length / result.sampleRate) * 1000;
-      const adjustedDuration = baseDuration / rate;
       
       // Wait for playback to complete using callbacks
       await new Promise<void>((resolve) => {
         let resolved = false;
         let checkCount = 0;
-        const maxChecks = Math.ceil(adjustedDuration / 50) + 20; // Add buffer
+        const maxChecks = Math.ceil(actualAudioDuration / 50) + 40; // Add buffer
         
         // Set up callback to detect when playback finishes
         const checkCompletion = () => {
@@ -595,14 +620,14 @@ export async function speakInBrowser(
           }
         }, 50);
         
-        // Also set a timeout as fallback
+        // Also set a timeout as fallback based on actual audio duration
         setTimeout(() => {
           if (!resolved) {
             resolved = true;
             clearInterval(checkInterval);
             resolve();
           }
-        }, adjustedDuration + 1000);
+        }, actualAudioDuration + 1000);
       });
     } catch (error: any) {
       console.error("Failed to play audio with sharedAudioPlayer:", error);

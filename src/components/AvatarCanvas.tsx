@@ -501,36 +501,51 @@ function AvatarModel({
 }
 
 export default function AvatarCanvas({ modelUrl }: { modelUrl: string }) {
+  const SHOW_REMOTE_MODEL = false;
   const [err, setErr] = useState<string | null>(null);
+  const resolvedUrl =
+    modelUrl && /^https?:\/\//i.test(modelUrl)
+      ? `/api/model?src=${encodeURIComponent(modelUrl)}`
+      : modelUrl;
 
   useEffect(() => {
-    if (!modelUrl) {
+    if (!SHOW_REMOTE_MODEL) return;
+    if (!resolvedUrl) {
       setErr("Set NEXT_PUBLIC_RPM_URL in .env.local");
       return;
     }
     (async () => {
       try {
-        const head = await fetch(modelUrl, { method: "HEAD" });
-        if (!head.ok) throw new Error(`${head.status}`);
+        let head = await fetch(resolvedUrl, { method: "HEAD", cache: "no-store" });
+        if (!head.ok) {
+          // fallback: try small range GET (CDNs may not allow HEAD)
+          head = await fetch(resolvedUrl, {
+            method: "GET",
+            headers: { Range: "bytes=0-0" },
+            cache: "no-store",
+          });
+          if (!head.ok) throw new Error(`${head.status}`);
+        }
       } catch (e: any) {
         setErr(`Cannot reach model: ${e?.message ?? e}`);
       }
     })();
-  }, [modelUrl]);
+  }, [resolvedUrl]);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && modelUrl) {
+    if (!SHOW_REMOTE_MODEL) return;
+    if (typeof window !== "undefined" && resolvedUrl) {
       try {
-        (useGLTF as any).preload?.(modelUrl);
+        (useGLTF as any).preload?.(resolvedUrl);
       } catch {}
     }
-  }, [modelUrl]);
+  }, [resolvedUrl, SHOW_REMOTE_MODEL]);
 
   const handleReady = (api: any) => {
     (window as any).__AVATAR__ = { ...(window as any).__AVATAR__, ...api };
   };
 
-  if (!modelUrl || err) {
+  if (SHOW_REMOTE_MODEL && (!resolvedUrl || err)) {
     return (
       <div className="grid place-items-center w-full h-full min-h-[520px] bg-slate-100 rounded-xl text-slate-600 p-4 text-center">
         {err ?? "Set NEXT_PUBLIC_RPM_URL in .env.local"}
@@ -549,7 +564,20 @@ export default function AvatarCanvas({ modelUrl }: { modelUrl: string }) {
         <ambientLight intensity={0.6} />
         <hemisphereLight intensity={0.4} />
         <directionalLight position={[2, 4, 2]} intensity={1.0} castShadow />
-        <AvatarModel url={modelUrl} onReady={handleReady} />
+        {SHOW_REMOTE_MODEL ? (
+          <AvatarModel url={resolvedUrl} onReady={handleReady} />
+        ) : (
+          <group position={[0, -1.2, 0]}>
+            <mesh castShadow position={[0, 1.2, 0]}>
+              <sphereGeometry args={[0.28, 32, 32]} />
+              <meshStandardMaterial color="#e2e8f0" />
+            </mesh>
+            <mesh castShadow position={[0, 0.55, 0]}>
+              <capsuleGeometry args={[0.22, 0.75, 8, 16]} />
+              <meshStandardMaterial color="#94a3b8" />
+            </mesh>
+          </group>
+        )}
         <Environment preset="city" />
       </Suspense>
     </Canvas>

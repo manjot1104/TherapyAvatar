@@ -1,4 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Therapy Avatar — Next.js + Express monorepo
+
+### Prerequisites
+- Node 20+
+- Chrome/Edge (COOP/COEP headers enabled by Next config for SharedArrayBuffer)
+
+### Environment
+- Frontend `.env.local`:
+```
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
+
+- Backend `server/.env`:
+```
+OPENAI_API_KEY=sk-...
+# optional:
+OPENAI_MODEL=gpt-4o-mini
+PORT=4000
+```
+
+### Run locally
+1) Start backend:
+```
+cd server
+npm i
+npm run dev
+```
+Backend runs on http://localhost:4000, health at GET /health, WS at :4050
+
+2) Start frontend:
+```
+npm i
+npm run dev
+```
+Visit http://localhost:3000
+
+If `NEXT_PUBLIC_API_URL` is missing or the backend is down, the therapy page will show a red banner.
+
+### Features
+- Mic capture → `/transcribe` (OpenAI Whisper) → reply via `/respond` (OpenAI Chat)
+- Browser Piper TTS via `speech-to-speech` with avatar viseme sync; falls back to Web Speech API if unavailable
+- Ready Player Me avatar with natural idle/gesture/bink and viseme weights
+- Session logging and PDF export; optional cloud save via `/api/reports`
+
+### Notes
+- For Piper/ONNX to work, SharedArrayBuffer must be available; Next.js sends COOP/COEP headers.
+- Public assets include images and optional local TTS models in `public/models/`.
 
 ## Getting Started
 

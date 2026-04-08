@@ -53,6 +53,21 @@ app.get("/", (_req: Request, res: Response) => {
   res.send("✅ Therapy Avatar Backend is running successfully 🚀");
 });
 
+/* ---------------- JSON Health ---------------- */
+app.get("/health", (_req: Request, res: Response) => {
+  try {
+    res.json({
+      ok: true,
+      service: "therapy-avatar-backend",
+      version: "1",
+      limits: { uploadMaxMb: 25 },
+      cors: true,
+    });
+  } catch {
+    res.status(500).json({ ok: false });
+  }
+});
+
 /* ---------------- Audio Transcription ---------------- */
 app.post("/transcribe", upload.single("audio"), async (req: Request, res: Response) => {
   let audioPath: string | null = null;

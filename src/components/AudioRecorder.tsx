@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { respond } from "@/lib/api";
 import { speakInBrowser } from "@/lib/speak";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 type Props = {
   onAssistant?: (text: string) => void;
@@ -192,11 +192,14 @@ export default function AudioRecorder({
       );
 
       setStatus("Transcribing…");
-      const res = await fetch(`${API_BASE}/transcribe`, {
+      const res = await fetch(`${API_BASE ? API_BASE : "/api/backend"}/transcribe`, {
         method: "POST",
         body: form,
       });
-      if (!res.ok) throw new Error(`ASR failed (${res.status})`);
+      if (!res.ok) {
+        const errTxt = await res.text().catch(() => "");
+        throw new Error(`ASR failed (${res.status}) ${errTxt || ""}`.trim());
+      }
 
       const data = await res.json();
       const userText = String(data?.text ?? "").trim();
@@ -214,18 +217,38 @@ export default function AudioRecorder({
 
       setStatus("Thinking…");
       const kbHint = `It’s okay. Take your time. Let’s try: "Hello".`;
-      const r = await respond(userText, kbHint, "greeting");
+      let r: any = null;
+      try {
+        r = await respond(userText, kbHint, "greeting");
+      } catch (err: any) {
+        const msg = String(err?.message || err || "");
+        setStatus(msg.includes("API base URL is not set") ? "Server URL missing. Set NEXT_PUBLIC_API_URL." : "Reply failed. Check server.");
+        return;
+      }
       const reply = r?.text || "";
       onAssistant?.(reply);
       onSetLastAssistant?.(reply);
 
       await sleep(120);
       setStatus("Speaking…");
-      if (reply) await speakInBrowser(reply, { rate: 0.6 });
+      if (reply) {
+        try {
+          await speakInBrowser(reply, { rate: 0.6 });
+        } catch {
+          // If TTS fails, still show ready status
+        }
+      }
       setStatus("Ready. Tap mic.");
     } catch (e) {
       console.error("processChunk error:", e);
-      setStatus("Error; ready again.");
+      const msg = String((e as any)?.message || e || "");
+      if (msg.includes("Failed to fetch")) {
+        setStatus("Cannot reach server. Is backend running?");
+      } else if (msg.includes("ASR failed")) {
+        setStatus("Transcription failed. Try again.");
+      } else {
+        setStatus("Error; ready again.");
+      }
     } finally {
       setProcessing(false);
       onProcessingChange?.(false);

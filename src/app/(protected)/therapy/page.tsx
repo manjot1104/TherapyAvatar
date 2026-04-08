@@ -1,7 +1,7 @@
 // src/app/(protected)/therapy/page.tsx
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { createClient } from "@/lib/supabase/browser-client";
 import ScenarioRunner from "@/components/ScenarioRunner";
 import { SCENARIOS } from "@/data/scenarios";
 import { speakInBrowser, stopSpeech } from "@/lib/speak";
+import { pingBackend } from "@/lib/api";
 
 const AvatarCanvas = dynamic(() => import("@/components/AvatarCanvas"), {
   ssr: false,
@@ -47,6 +48,7 @@ export default function TherapyMainPage() {
 
   const [captionText, setCaptionText] = useState("");
   const [spokenScript, setSpokenScript] = useState("");
+  const rpmModelUrl = process.env.NEXT_PUBLIC_RPM_URL || "";
 
   const [processing, setProcessing] = useState(false);
   const [activeScenario, setActiveScenario] =
@@ -57,8 +59,28 @@ export default function TherapyMainPage() {
 
   const [selectedLanguage, setSelectedLanguage] =
     useState<LangCode>("en");
+  const scenarioKeys = useMemo(
+    () => Object.keys(SCENARIOS) as (keyof typeof SCENARIOS)[],
+    []
+  );
 
   const selectedChildId: string | null = null;
+
+  const [apiOk, setApiOk] = useState<boolean | null>(null);
+  const [apiUrl, setApiUrl] = useState<string | null>(null);
+
+  // simple backend health ping
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await pingBackend();
+        setApiOk(res.ok);
+        setApiUrl(res.url);
+      } catch {
+        setApiOk(false);
+      }
+    })();
+  }, []);
 
   // ensure session row
   useEffect(() => {
@@ -172,6 +194,20 @@ export default function TherapyMainPage() {
 
   return (
     <section className="grid gap-4">
+      {/* Backend health banner */}
+      {apiOk === false ? (
+        <div className="rounded-lg border border-red-300 bg-red-50 text-red-800 px-3 py-2">
+          <span>
+            Cannot reach backend{apiUrl ? ` at ${apiUrl}` : ""}. Start the server on port 4000 or update env.
+          </span>
+        </div>
+      ) : null}
+      {!rpmModelUrl ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 px-3 py-2">
+          Avatar model URL not set. Add <code className="px-1 rounded bg-white border">NEXT_PUBLIC_RPM_URL</code> (e.g. /models/avatar.glb).
+        </div>
+      ) : null}
+
       <Card className="bg-card/90 border-border shadow-sm overflow-hidden">
         <CardContent className="p-0">
           <div
@@ -211,7 +247,7 @@ export default function TherapyMainPage() {
                   </div>
                 }
               >
-                <AvatarCanvas modelUrl="https://models.readyplayer.me/68f9edd6a9529d2d623bdb8b.glb?morphTargets=ARKit" />
+                <AvatarCanvas modelUrl={rpmModelUrl} />
               </Suspense>
             </div>
 
@@ -330,13 +366,7 @@ export default function TherapyMainPage() {
         </Badge>
 
         <div className="flex gap-2 flex-wrap">
-          {([
-            "greeting_teacher",
-            "ask_help",
-            "wait_turn",
-            "share_play",
-            "calm_down",
-          ] as const).map((key) => (
+          {scenarioKeys.map((key) => (
             <button
               key={key}
               onClick={() => {

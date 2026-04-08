@@ -11,6 +11,7 @@ let ttsInitialized = false;
 let initPromise: Promise<void> | null = null;
 let speakingLock = false;
 let audioPlayerConfigured = false;
+const TTS_GAIN = 1.8;
 
 /* ========= Browser check ========= */
 
@@ -39,7 +40,16 @@ async function initializeTTS(lang?: string): Promise<any> {
     }
 
     // Dynamic import to avoid SSR issues
-    const { TTSLogic, sharedAudioPlayer: audioPlayer } = await import("speech-to-speech");
+    let TTSLogicMod: any = null;
+    let audioPlayer: any = null;
+    try {
+      const mod = await import("speech-to-speech");
+      TTSLogicMod = mod.TTSLogic;
+      audioPlayer = mod.sharedAudioPlayer;
+    } catch (e) {
+      // Fall back to Web Speech API later in speakInBrowser
+      throw new Error("speech-to-speech module unavailable");
+    }
 
     // Configure shared audio player only once
     if (!audioPlayerConfigured) {
@@ -54,7 +64,7 @@ async function initializeTTS(lang?: string): Promise<any> {
         // If already configured, try to reset first
         if (error?.message?.includes("already initialized")) {
           try {
-            (audioPlayer as any).reset?.();
+        (audioPlayer as any).reset?.();
             audioPlayer.configure({
               autoPlay: true,
               sampleRate: 22050,
@@ -96,7 +106,7 @@ async function initializeTTS(lang?: string): Promise<any> {
 
     // Disable warmUp to reduce initial memory allocation
     // Model will be loaded on first synthesis instead
-    ttsInstance = new TTSLogic({
+    ttsInstance = new TTSLogicMod({
       voiceId,
       warmUp: false, // Changed from true to reduce memory usage
     });
@@ -113,6 +123,9 @@ async function initializeTTS(lang?: string): Promise<any> {
 
 async function waitForAvatar(timeoutMs = 4000): Promise<any> {
   if (!isBrowser()) return null;
+  const existing = (window as any).__AVATAR__;
+  // When avatar model is disabled/unavailable, don't block TTS waiting for hooks.
+  if (!existing || typeof existing.setWeight !== "function") return null;
   const start = performance.now();
 
   return new Promise((resolve) => {
@@ -256,6 +269,18 @@ export async function ensureSpeechUnlocked(): Promise<void> {
 /* ========= Viseme timeline generation ========= */
 
 type KeyVal = { time: number; key: string; value: number };
+
+function applyGain(
+  audio: Float32Array | number[] | ArrayLike<number>,
+  gain = TTS_GAIN
+) {
+  const out = new Float32Array(audio.length);
+  for (let i = 0; i < audio.length; i++) {
+    const s = Number(audio[i]) * gain;
+    out[i] = Math.max(-1, Math.min(1, s));
+  }
+  return out;
+}
 
 function generateVisemeTimeline(text: string, rate: number): KeyVal[] {
   const t = text.trim();
@@ -414,8 +439,35 @@ export async function speakInBrowser(
   const timeline = generateVisemeTimeline(t, rate);
   const timelineEndMs = timeline.length ? timeline[timeline.length - 1].time : 0;
 
-  // Initialize TTS
-  const tts = await initializeTTS(opts?.lang);
+  // Try initialize Piper TTS, else fallback to Web Speech API
+  let tts: any = null;
+  try {
+    tts = await initializeTTS(opts?.lang);
+  } catch (e) {
+    // Fallback path: Web Speech API (no viseme-accurate sync, but audio plays)
+    const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
+    if (synth && typeof synth.speak === "function") {
+      const utter = new SpeechSynthesisUtterance(t);
+      if (opts?.lang) utter.lang = opts.lang;
+      if (opts?.pitch != null) utter.pitch = opts.pitch;
+      utter.rate = Math.max(0.5, Math.min(2, rate));
+      utter.volume = 1;
+      // Basic hooks for avatar mood
+      utter.onstart = () => {
+        setAvatarMood(mood, "during");
+        avatarTalkStart();
+      };
+      utter.onend = () => {
+        avatarTalkStop();
+        setAvatarMood("neutral", "after");
+      };
+      synth.cancel();
+      synth.speak(utter);
+      return;
+    }
+    // If even Web Speech API is unavailable, rethrow
+    throw e;
+  }
 
   // Dynamic import to avoid SSR
   const { sharedAudioPlayer } = await import("speech-to-speech");
@@ -589,7 +641,10 @@ export async function speakInBrowser(
     // This is more efficient and less laggy than manual AudioContext
     try {
       // Add audio to the queue - it will play automatically since autoPlay is true
-      sharedAudioPlayer.addAudioIntoQueue(result.audio, result.sampleRate);
+      sharedAudioPlayer.addAudioIntoQueue(
+        applyGain(result.audio, TTS_GAIN),
+        result.sampleRate
+      );
       
       // Wait for playback to complete using callbacks
       await new Promise<void>((resolve) => {

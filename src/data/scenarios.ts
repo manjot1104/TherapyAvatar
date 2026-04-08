@@ -41,6 +41,438 @@ export function getScenarioWithShuffledOptions(scenarioKey: keyof typeof SCENARI
 }
 
 export const SCENARIOS: Record<string, Scenario> = {
+// Basic Learning: Animal Sounds
+  animal_sounds_basic: {
+    key: "animal_sounds_basic",
+    title: "Animal Sounds",
+    skillLabel: "Basic Learning",
+    questions: [
+      {
+        prompt: { en: "What sound does a dog make?", hi: "कुत्ता कैसी आवाज़ करता है?", pa: "ਕੁੱਤਾ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦਾ ਹੈ?" },
+        options: [
+          { text: { en: "Bark", hi: "भौं भौं", pa: "ਭੌਂ ਭੌਂ" }, imageUrl: "bark.png" },
+          { text: { en: "Meow", hi: "म्याऊँ", pa: "ਮਿਆਊਂ" }, imageUrl: "meow.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "dog.png"
+      },
+      {
+        prompt: { en: "What sound does a cat make?", hi: "बिल्ली कैसी आवाज़ करती है?", pa: "ਬਿੱਲੀ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦੀ ਹੈ?" },
+        options: [
+          { text: { en: "Meow", hi: "म्याऊँ", pa: "ਮਿਆਊਂ" }, imageUrl: "meow.png" },
+          { text: { en: "Moo", hi: "माँ", pa: "ਮਾਂ" }, imageUrl: "moo.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "cat.png"
+      },
+      {
+        prompt: { en: "What sound does a cow make?", hi: "गाय कैसी आवाज़ करती है?", pa: "ਗਾਂ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦੀ ਹੈ?" },
+        options: [
+          { text: { en: "Moo", hi: "माँ", pa: "ਮਾਂ" }, imageUrl: "moo.png" },
+          { text: { en: "Quack", hi: "क्वैक", pa: "ਕਵੈਕ" }, imageUrl: "quack.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "cow.png"
+      },
+      {
+        prompt: { en: "What sound does a duck make?", hi: "बतख कैसी आवाज़ करती है?", pa: "ਬਤਖ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦੀ ਹੈ?" },
+        options: [
+          { text: { en: "Quack", hi: "क्वैक", pa: "ਕਵੈਕ" }, imageUrl: "quack.png" },
+          { text: { en: "Neigh", hi: "हीही", pa: "ਹੀਹੀ" }, imageUrl: "neigh.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "duck.png"
+      },
+      {
+        prompt: { en: "What sound does a lion make?", hi: "शेर कैसी आवाज़ करता है?", pa: "ਸ਼ੇਰ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦਾ ਹੈ?" },
+        options: [
+          { text: { en: "Roar", hi: "गर्र", pa: "ਗਰਰ" }, imageUrl: "roar.png" },
+          { text: { en: "Chirp", hi: "चूँ चूँ", pa: "ਚੀਂ ਚੀਂ" }, imageUrl: "chirp.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "lion.png"
+      }
+    ]
+  },
+
+  // Basic Learning: Vehicle Sounds
+  vehicle_sounds_basic: {
+    key: "vehicle_sounds_basic",
+    title: "Vehicle Sounds",
+    skillLabel: "Basic Learning",
+    questions: [
+      {
+        prompt: { en: "What sound does a car make?", hi: "कार कैसी आवाज़ करती है?", pa: "ਕਾਰ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦੀ ਹੈ?" },
+        options: [
+          { text: { en: "Vroom", hi: "व्रूम", pa: "ਵਰੂਮ" }, imageUrl: "vroom.png" },
+          { text: { en: "Moo", hi: "माँ", pa: "ਮਾਂ" }, imageUrl: "moo.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "car.png"
+      },
+      {
+        prompt: { en: "What sound does a train make?", hi: "ट्रेन कैसी आवाज़ करती है?", pa: "ਟ੍ਰੇਨ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦੀ ਹੈ?" },
+        options: [
+          { text: { en: "Choo choo", hi: "छुक छुक", pa: "ਛੁਕ ਛੁਕ" }, imageUrl: "choo_choo.png" },
+          { text: { en: "Meow", hi: "म्याऊँ", pa: "ਮਿਆਊਂ" }, imageUrl: "meow.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "train.png"
+      },
+      {
+        prompt: { en: "What sound does a bike bell make?", hi: "साइकिल की घंटी कैसी बजती है?", pa: "ਸਾਈਕਲ ਦੀ ਘੰਟੀ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦੀ ਹੈ?" },
+        options: [
+          { text: { en: "Ring ring", hi: "ट्रिन ट्रिन", pa: "ਟ੍ਰਿਨ ਟ੍ਰਿਨ" }, imageUrl: "ring_ring.png" },
+          { text: { en: "Roar", hi: "गर्र", pa: "ਗਰਰ" }, imageUrl: "roar.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "bicycle.png"
+      },
+      {
+        prompt: { en: "What sound does an ambulance make?", hi: "एम्बुलेंस कैसी आवाज़ करती है?", pa: "ਐਂਬੂਲੈਂਸ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦੀ ਹੈ?" },
+        options: [
+          { text: { en: "Siren", hi: "सायरन", pa: "ਸਾਇਰਨ" }, imageUrl: "siren.png" },
+          { text: { en: "Quack", hi: "क्वैक", pa: "ਕਵੈਕ" }, imageUrl: "quack.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "ambulance.png"
+      },
+      {
+        prompt: { en: "What sound does a bus horn make?", hi: "बस का हॉर्न कैसी आवाज़ करता है?", pa: "ਬੱਸ ਦਾ ਹੋਰਨ ਕਿਹੜੀ ਆਵਾਜ਼ ਕਰਦਾ ਹੈ?" },
+        options: [
+          { text: { en: "Honk", hi: "पों पों", pa: "ਪੋਂ ਪੋਂ" }, imageUrl: "honk.png" },
+          { text: { en: "Chirp", hi: "चूँ चूँ", pa: "ਚੀਂ ਚੀਂ" }, imageUrl: "chirp.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "bus.png"
+      }
+    ]
+  },
+
+  // Basic Learning: Who Is He or She
+  who_is_he_she: {
+    key: "who_is_he_she",
+    title: "Who Is He or She",
+    skillLabel: "Basic Learning",
+    questions: [
+      {
+        prompt: { en: "Who is he?", hi: "वह कौन है?", pa: "ਇਹ ਕੌਣ ਹੈ?" },
+        options: [
+          { text: { en: "Boy", hi: "लड़का", pa: "ਮੁੰਡਾ" }, imageUrl: "boy.png" },
+          { text: { en: "Girl", hi: "लड़की", pa: "ਕੁੜੀ" }, imageUrl: "girl.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "boy.png"
+      },
+      {
+        prompt: { en: "Who is she?", hi: "वह कौन है?", pa: "ਇਹ ਕੌਣ ਹੈ?" },
+        options: [
+          { text: { en: "Woman", hi: "औरत", pa: "ਔਰਤ" }, imageUrl: "woman.png" },
+          { text: { en: "Man", hi: "आदमी", pa: "ਆਦਮੀ" }, imageUrl: "man.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "woman.png"
+      },
+      {
+        prompt: { en: "He is a ____.", hi: "वह एक ____ है।", pa: "ਇਹ ਇੱਕ ____ ਹੈ।" },
+        options: [
+          { text: { en: "Man", hi: "आदमी", pa: "ਆਦਮੀ" }, imageUrl: "man.png" },
+          { text: { en: "Woman", hi: "औरत", pa: "ਔਰਤ" }, imageUrl: "woman.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "man.png"
+      },
+      {
+        prompt: { en: "She is a ____.", hi: "वह एक ____ है।", pa: "ਇਹ ਇੱਕ ____ ਹੈ।" },
+        options: [
+          { text: { en: "Girl", hi: "लड़की", pa: "ਕੁੜੀ" }, imageUrl: "girl.png" },
+          { text: { en: "Boy", hi: "लड़का", pa: "ਮੁੰਡਾ" }, imageUrl: "boy.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "girl.png"
+      },
+      {
+        prompt: { en: "Who is he?", hi: "वह कौन है?", pa: "ਇਹ ਕੌਣ ਹੈ?" },
+        options: [
+          { text: { en: "Father", hi: "पिता", pa: "ਪਿਤਾ" }, imageUrl: "father.png" },
+          { text: { en: "Mother", hi: "माँ", pa: "ਮਾਂ" }, imageUrl: "mother.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "father.png"
+      }
+    ]
+  },
+
+  // Basic Learning: Rooms Identification
+  rooms_identification: {
+    key: "rooms_identification",
+    title: "Rooms Identification",
+    skillLabel: "Basic Learning",
+    questions: [
+      {
+        prompt: { en: "Where do you sleep?", hi: "तुम कहाँ सोते हो?", pa: "ਤੂੰ ਕਿੱਥੇ ਸੌਂਦਾ ਹੈਂ?" },
+        options: [
+          { text: { en: "Bedroom", hi: "शयनकक्ष", pa: "ਸੌਣ ਵਾਲਾ ਕਮਰਾ" }, imageUrl: "bedroom.png" },
+          { text: { en: "Kitchen", hi: "रसोई", pa: "ਰਸੋਈ" }, imageUrl: "kitchen.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "bedroom.png"
+      },
+      {
+        prompt: { en: "Where do you cook food?", hi: "तुम खाना कहाँ बनाते हो?", pa: "ਤੂੰ ਖਾਣਾ ਕਿੱਥੇ ਬਣਾਉਂਦਾ ਹੈਂ?" },
+        options: [
+          { text: { en: "Kitchen", hi: "रसोई", pa: "ਰਸੋਈ" }, imageUrl: "kitchen.png" },
+          { text: { en: "Bathroom", hi: "बाथरूम", pa: "ਨ੍ਹਾਉਣ ਵਾਲਾ ਕਮਰਾ" }, imageUrl: "bathroom.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "kitchen.png"
+      },
+      {
+        prompt: { en: "Where do you take a bath?", hi: "तुम नहाते कहाँ हो?", pa: "ਤੂੰ ਨ੍ਹਾਉਂਦਾ ਕਿੱਥੇ ਹੈਂ?" },
+        options: [
+          { text: { en: "Bathroom", hi: "बाथरूम", pa: "ਨ੍ਹਾਉਣ ਵਾਲਾ ਕਮਰਾ" }, imageUrl: "bathroom.png" },
+          { text: { en: "Living room", hi: "बैठक कमरा", pa: "ਬੈਠਕ ਕਮਰਾ" }, imageUrl: "living_room.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "bathroom.png"
+      },
+      {
+        prompt: { en: "Where do you watch TV?", hi: "तुम टीवी कहाँ देखते हो?", pa: "ਤੂੰ ਟੀਵੀ ਕਿੱਥੇ ਵੇਖਦਾ ਹੈਂ?" },
+        options: [
+          { text: { en: "Living room", hi: "बैठक कमरा", pa: "ਬੈਠਕ ਕਮਰਾ" }, imageUrl: "living_room.png" },
+          { text: { en: "Bedroom", hi: "शयनकक्ष", pa: "ਸੌਣ ਵਾਲਾ ਕਮਰਾ" }, imageUrl: "bedroom.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "living_room.png"
+      },
+      {
+        prompt: { en: "Where is the bed?", hi: "बिस्तर कहाँ है?", pa: "ਬਿਸਤਰਾ ਕਿੱਥੇ ਹੈ?" },
+        options: [
+          { text: { en: "Bedroom", hi: "शयनकक्ष", pa: "ਸੌਣ ਵਾਲਾ ਕਮਰਾ" }, imageUrl: "bedroom.png" },
+          { text: { en: "Kitchen", hi: "रसोई", pa: "ਰਸੋਈ" }, imageUrl: "kitchen.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "bed.png"
+      }
+    ]
+  },
+
+  // Basic Learning: Fruits Identification
+  fruits_identification: {
+    key: "fruits_identification",
+    title: "Fruits Identification",
+    skillLabel: "Basic Learning",
+    questions: [
+      {
+        prompt: { en: "Which one is apple?", hi: "इनमें से सेब कौन सा है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਸੇਬ ਕਿਹੜਾ ਹੈ?" },
+        options: [
+          { text: { en: "Apple", hi: "सेब", pa: "ਸੇਬ" }, imageUrl: "apple.png" },
+          { text: { en: "Potato", hi: "आलू", pa: "ਆਲੂ" }, imageUrl: "potato.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "apple.png"
+      },
+      {
+        prompt: { en: "Which one is banana?", hi: "इनमें से केला कौन सा है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਕੇਲਾ ਕਿਹੜਾ ਹੈ?" },
+        options: [
+          { text: { en: "Banana", hi: "केला", pa: "ਕੇਲਾ" }, imageUrl: "banana.png" },
+          { text: { en: "Onion", hi: "प्याज़", pa: "ਪਿਆਜ਼" }, imageUrl: "onion.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "banana.png"
+      },
+      {
+        prompt: { en: "Which one is mango?", hi: "इनमें से आम कौन सा है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਅੰਬ ਕਿਹੜਾ ਹੈ?" },
+        options: [
+          { text: { en: "Mango", hi: "आम", pa: "ਅੰਬ" }, imageUrl: "mango.png" },
+          { text: { en: "Carrot", hi: "गाजर", pa: "ਗਾਜਰ" }, imageUrl: "carrot.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "mango.png"
+      },
+      {
+        prompt: { en: "Which one is orange?", hi: "इनमें से संतरा कौन सा है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਸੰਤਰਾ ਕਿਹੜਾ ਹੈ?" },
+        options: [
+          { text: { en: "Orange", hi: "संतरा", pa: "ਸੰਤਰਾ" }, imageUrl: "orange.png" },
+          { text: { en: "Cabbage", hi: "पत्ता गोभी", pa: "ਪੱਤਾ ਗੋਭੀ" }, imageUrl: "cabbage.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "orange.png"
+      },
+      {
+        prompt: { en: "Which one is grapes?", hi: "इनमें से अंगूर कौन से हैं?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਅੰਗੂਰ ਕਿਹੜੇ ਹਨ?" },
+        options: [
+          { text: { en: "Grapes", hi: "अंगूर", pa: "ਅੰਗੂਰ" }, imageUrl: "grapes.png" },
+          { text: { en: "Tomato", hi: "टमाटर", pa: "ਟਮਾਟਰ" }, imageUrl: "tomato.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "grapes.png"
+      }
+    ]
+  },
+
+  // Basic Learning: Vegetables Identification
+  vegetables_identification: {
+    key: "vegetables_identification",
+    title: "Vegetables Identification",
+    skillLabel: "Basic Learning",
+    questions: [
+      {
+        prompt: { en: "Which one is potato?", hi: "इनमें से आलू कौन सा है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਆਲੂ ਕਿਹੜਾ ਹੈ?" },
+        options: [
+          { text: { en: "Potato", hi: "आलू", pa: "ਆਲੂ" }, imageUrl: "potato.png" },
+          { text: { en: "Apple", hi: "सेब", pa: "ਸੇਬ" }, imageUrl: "apple.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "potato.png"
+      },
+      {
+        prompt: { en: "Which one is tomato?", hi: "इनमें से टमाटर कौन सा है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਟਮਾਟਰ ਕਿਹੜਾ ਹੈ?" },
+        options: [
+          { text: { en: "Tomato", hi: "टमाटर", pa: "ਟਮਾਟਰ" }, imageUrl: "tomato.png" },
+          { text: { en: "Banana", hi: "केला", pa: "ਕੇਲਾ" }, imageUrl: "banana.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "tomato.png"
+      },
+      {
+        prompt: { en: "Which one is carrot?", hi: "इनमें से गाजर कौन सी है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਗਾਜਰ ਕਿਹੜੀ ਹੈ?" },
+        options: [
+          { text: { en: "Carrot", hi: "गाजर", pa: "ਗਾਜਰ" }, imageUrl: "carrot.png" },
+          { text: { en: "Mango", hi: "आम", pa: "ਅੰਬ" }, imageUrl: "mango.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "carrot.png"
+      },
+      {
+        prompt: { en: "Which one is onion?", hi: "इनमें से प्याज़ कौन सा है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਪਿਆਜ਼ ਕਿਹੜਾ ਹੈ?" },
+        options: [
+          { text: { en: "Onion", hi: "प्याज़", pa: "ਪਿਆਜ਼" }, imageUrl: "onion.png" },
+          { text: { en: "Grapes", hi: "अंगूर", pa: "ਅੰਗੂਰ" }, imageUrl: "grapes.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "onion.png"
+      },
+      {
+        prompt: { en: "Which one is cabbage?", hi: "इनमें से पत्ता गोभी कौन सी है?", pa: "ਇਨ੍ਹਾਂ ਵਿੱਚ ਪੱਤਾ ਗੋਭੀ ਕਿਹੜੀ ਹੈ?" },
+        options: [
+          { text: { en: "Cabbage", hi: "पत्ता गोभी", pa: "ਪੱਤਾ ਗੋਭੀ" }, imageUrl: "cabbage.png" },
+          { text: { en: "Orange", hi: "संतरा", pa: "ਸੰਤਰਾ" }, imageUrl: "orange.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "cabbage.png"
+      }
+    ]
+  },
+
+  // Basic Learning: Emotions Identification
+  emotions_identification: {
+    key: "emotions_identification",
+    title: "Emotions Identification",
+    skillLabel: "Basic Learning",
+    questions: [
+      {
+        prompt: { en: "How do you feel when you smile?", hi: "जब तुम मुस्कुराते हो तो कैसा लगता है?", pa: "ਜਦੋਂ ਤੂੰ ਮੁਸਕੁਰਾਂਦਾ ਹੈਂ ਤਾਂ ਕਿਵੇਂ ਲੱਗਦਾ ਹੈ?" },
+        options: [
+          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "happy.png" },
+          { text: { en: "Sad", hi: "उदास", pa: "ਉਦਾਸ" }, imageUrl: "sad.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "happy.png"
+      },
+      {
+        prompt: { en: "How do you feel when you cry?", hi: "जब तुम रोते हो तो कैसा लगता है?", pa: "ਜਦੋਂ ਤੂੰ ਰੋਂਦਾ ਹੈਂ ਤਾਂ ਕਿਵੇਂ ਲੱਗਦਾ ਹੈ?" },
+        options: [
+          { text: { en: "Sad", hi: "उदास", pa: "ਉਦਾਸ" }, imageUrl: "sad.png" },
+          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "happy.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "sad.png"
+      },
+      {
+        prompt: { en: "How do you feel when you shout?", hi: "जब तुम चिल्लाते हो तो कैसा लगता है?", pa: "ਜਦੋਂ ਤੂੰ ਚੀਕਦਾ ਹੈਂ ਤਾਂ ਕਿਵੇਂ ਲੱਗਦਾ ਹੈ?" },
+        options: [
+          { text: { en: "Angry", hi: "गुस्सा", pa: "ਗੁੱਸਾ" }, imageUrl: "angry.png" },
+          { text: { en: "Tired", hi: "थका", pa: "ਥੱਕਿਆ" }, imageUrl: "tired.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "angry.png"
+      },
+      {
+        prompt: { en: "How do you feel at a magic trick?", hi: "जादू देखकर कैसा लगता है?", pa: "ਜਾਦੂ ਵੇਖ ਕੇ ਕਿਵੇਂ ਲੱਗਦਾ ਹੈ?" },
+        options: [
+          { text: { en: "Surprised", hi: "हैरान", pa: "ਹੈਰਾਨ" }, imageUrl: "surprised.png" },
+          { text: { en: "Angry", hi: "गुस्सा", pa: "ਗੁੱਸਾ" }, imageUrl: "angry.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "surprised.png"
+      },
+      {
+        prompt: { en: "How do you feel before sleep?", hi: "सोने से पहले कैसा लगता है?", pa: "ਸੌਣ ਤੋਂ ਪਹਿਲਾਂ ਕਿਵੇਂ ਲੱਗਦਾ ਹੈ?" },
+        options: [
+          { text: { en: "Tired", hi: "थका", pa: "ਥੱਕਿਆ" }, imageUrl: "tired.png" },
+          { text: { en: "Happy", hi: "खुश", pa: "ਖੁਸ਼" }, imageUrl: "happy.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "tired.png"
+      }
+    ]
+  },
+
+  // Basic Learning: Colors Identification
+  colors_identification: {
+    key: "colors_identification",
+    title: "Colors Identification",
+    skillLabel: "Basic Learning",
+    questions: [
+      {
+        prompt: { en: "What color is an apple?", hi: "सेब का रंग क्या है?", pa: "ਸੇਬ ਦਾ ਰੰਗ ਕੀ ਹੈ?" },
+        options: [
+          { text: { en: "Red", hi: "लाल", pa: "ਲਾਲ" }, imageUrl: "red.png" },
+          { text: { en: "Blue", hi: "नीला", pa: "ਨੀਲਾ" }, imageUrl: "blue.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "red.png"
+      },
+      {
+        prompt: { en: "What color is the sky?", hi: "आसमान का रंग क्या है?", pa: "ਅਸਮਾਨ ਦਾ ਰੰਗ ਕੀ ਹੈ?" },
+        options: [
+          { text: { en: "Blue", hi: "नीला", pa: "ਨੀਲਾ" }, imageUrl: "blue.png" },
+          { text: { en: "Green", hi: "हरा", pa: "ਹਰਾ" }, imageUrl: "green.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "blue.png"
+      },
+      {
+        prompt: { en: "What color is grass?", hi: "घास का रंग क्या है?", pa: "ਘਾਹ ਦਾ ਰੰਗ ਕੀ ਹੈ?" },
+        options: [
+          { text: { en: "Green", hi: "हरा", pa: "ਹਰਾ" }, imageUrl: "green.png" },
+          { text: { en: "Yellow", hi: "पीला", pa: "ਪੀਲਾ" }, imageUrl: "yellow.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "green.png"
+      },
+      {
+        prompt: { en: "What color is the sun?", hi: "सूरज का रंग क्या है?", pa: "ਸੂਰਜ ਦਾ ਰੰਗ ਕੀ ਹੈ?" },
+        options: [
+          { text: { en: "Yellow", hi: "पीला", pa: "ਪੀਲਾ" }, imageUrl: "yellow.png" },
+          { text: { en: "Black", hi: "काला", pa: "ਕਾਲਾ" }, imageUrl: "black.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "yellow.png"
+      },
+      {
+        prompt: { en: "What color is night?", hi: "रात का रंग क्या है?", pa: "ਰਾਤ ਦਾ ਰੰਗ ਕੀ ਹੈ?" },
+        options: [
+          { text: { en: "Black", hi: "काला", pa: "ਕਾਲਾ" }, imageUrl: "black.png" },
+          { text: { en: "Red", hi: "लाल", pa: "ਲਾਲ" }, imageUrl: "red.png" }
+        ],
+        correctIndex: 0,
+        imageUrl: "black.png"
+      }
+    ]
+  },
+
   greeting_teacher: {
     key: "greeting_teacher",
     title: "Greeting Teacher",
@@ -1768,4 +2200,8 @@ export const SCENARIOS: Record<string, Scenario> = {
         imageUrl: "calm_down_30.png"
       }
     ]
-}}
+  },
+};
+
+
+

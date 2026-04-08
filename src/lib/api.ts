@@ -37,3 +37,22 @@ export async function respond(text: string, kbHint?: string, module?: string) {
   });
 }
 
+/* ---------------- health ---------------- */
+export async function pingBackend(): Promise<{
+  ok: boolean;
+  url: string | null;
+  detail?: any;
+}> {
+  const url = API_BASE || null;
+  if (!url) {
+    return { ok: false, url };
+  }
+  try {
+    const res = await fetch(`${url}/health`, { cache: "no-store" });
+    if (!res.ok) return { ok: false, url, detail: res.status };
+    const data = await res.json().catch(() => ({}));
+    return { ok: Boolean(data?.ok), url, detail: data };
+  } catch (e: any) {
+    return { ok: false, url, detail: e?.message || String(e) };
+  }
+}
